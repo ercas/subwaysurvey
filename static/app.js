@@ -1,6 +1,8 @@
 var stationButtons = document.getElementById("subway-lines").getElementsByTagName("td"),
     sourceInput = document.getElementById("source"),
     locationInput = document.getElementById("location"),
+    submitButton = document.getElementById("submit"),
+    responseFrame = document.getElementById("response-frame");
     stationName = "northeastern";
 
 var statusSelector = document.getElementById("status-selector"),
@@ -8,6 +10,7 @@ var statusSelector = document.getElementById("status-selector"),
     locationStatuses = ["stopped", "entering", "leaving", "left"],
     locationStatus = 0;
 
+// update the forms and ui to reflect inputs
 function updateLocation() {
     locationInput.value = stationName;
     valueInput.value = locationStatus;
@@ -69,6 +72,22 @@ for (var i = 0; i < stationButtons.length; i++) {
         })(thisStationName);
     }
 
+}
+
+// keybindings
+document.onkeydown = function(e) {
+    console.log(e.key);
+    var i = parseInt(e.key);
+    if (Number.isInteger(i) && i <= locationStatuses.length) {
+        locationStatus = i;
+        updateLocation();
+    } else if (e.key == "Enter") {
+        submitButton.click();
+    }
+}
+
+submitButton.onclick = function() {
+    responseFrame.setAttribute("src", "about:blank");
 }
 
 updateLocation();

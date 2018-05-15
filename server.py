@@ -37,7 +37,7 @@ def new_observation():
         db = DB()
         db.record(*observation)
         db.commit()
-        return flask.jsonify(True)
+        return flask.jsonify(observation)
     else:
         return flask.jsonify(False)
 
