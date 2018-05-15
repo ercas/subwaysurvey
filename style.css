@@ -1,0 +1,62 @@
+html {
+    font-family: sans-serif;
+    font-size: 12px;
+}
+table {
+    border-spacing: 0px;
+    color: #ffffff;
+}
+td {
+    cursor: pointer;
+    padding: 6px 12px;
+    border-width: 4px 0px;
+}
+td:hover {
+    border-style: solid;
+    border-color: #ffffff;
+}
+
+.default {
+    padding: 2px;
+    border-spacing: 12px 0px;
+    background-color: default;
+    color: #000000;
+    cursor: default;
+}
+.default:hover {
+    border-style: none;
+}
+
+#status-selector {
+    background-color: #000000;
+}
+.selected-status {
+    background-color: #80276c;
+}
+
+#subway-lines {
+    overflow-x: scroll;
+    width: 100%;
+}
+.blue-line {
+    background-color: #0e4b90;
+}
+.green-line {
+    background-color: #008344;
+}
+.orange-line {
+    background-color: #ee8a21;
+}
+.red-line {
+    background-color: #df2826;
+}
+.selected-station {
+    background-color: #80276c;
+}
+.blank {
+    background-color: #ffffff;
+}
+.blank:hover {
+    cursor: default;
+    border-style: none;
+}

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import os
 import sqlite3
 import time
 
@@ -18,31 +19,41 @@ class DB(object):
             database commit will be forced
         """
 
+        self.db_path = path
+        self.id_cache = {}
         self.auto_commit_interval = auto_commit_interval
         self.i = 0
 
-        self.connection = sqlite3.connect(path)
+        setup = False
+        if (not os.path.isfile(self.db_path)):
+            setup = True
+
+        self.connection = sqlite3.connect(self.db_path)
         self.cursor = self.connection.cursor()
 
-        self.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS source_ids(
-                id INTEGER PRIMARY KEY,
-                name VARCHAR UNIQUE
-            )
-        """)
-        self.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS observations(
-                timestamp FLOAT,
-                source_id INTEGER,
-                value FLOAT,
-                notes VARCHAR,
-                FOREIGN KEY(source_id) REFERENCES source_ids(id)
-            )
-        """)
-        self.connection.commit()
-        self.id_cache = {}
+        if (setup):
+            print("intiializing new database")
+            for id_table in ["sources", "locations"]:
+                self.cursor.execute("""
+                    CREATE TABLE IF NOT EXISTS %s(
+                        id INTEGER PRIMARY KEY,
+                        name VARCHAR UNIQUE
+                    )
+                """ % id_table)
+            self.cursor.execute("""
+                CREATE TABLE IF NOT EXISTS observations(
+                    timestamp FLOAT,
+                    source_id INTEGER,
+                    location_id INTEGER,
+                    value FLOAT,
+                    notes VARCHAR,
+                    FOREIGN KEY(source_id) REFERENCES sources(id),
+                    FOREIGN KEY(location_id) REFERENCES locations(id)
+                )
+            """)
+            self.connection.commit()
 
-    def check_auto_commit(self):
+    def _check_auto_commit(self):
         """ Automatically commit data to the database if the number of observations
         since the last commit has passed the threshold """
 
@@ -88,10 +99,12 @@ class DB(object):
             self.id_cache[table][name] = id_
             return id_
 
-    def record(self, source_name, value, timestamp = None, notes = None):
+    def record(self, source_name, location_name, value, timestamp = None,
+               notes = None):
         """ Record a timestamped observation to the database
 
         :param str source_name: The name of the source
+        :param str location_name: The name of the location
         :param float value: The value of the observation
         :param float timestamp: The time that the observation was taken; defaults
             to the current system time
@@ -104,19 +117,22 @@ class DB(object):
         try:
             self.cursor.execute(
                 """
-                    INSERT INTO observations(timestamp, source_id, value)
-                    VALUES (?, ?, ?)
+                    INSERT INTO observations(timestamp, source_id, location_id, value, notes)
+                    VALUES (?, ?, ?, ?, ?)
                 """,
-                (timestamp, self.resolve_id("source_ids", source_name), value)
+                (
+                    timestamp, self.resolve_id("sources", source_name),
+                    self.resolve_id("locations", location_name),
+                    value, notes)
             )
-            self.check_auto_commit()
+            self._check_auto_commit()
         except sqlite3.OperationalError:
             print("database busy, trying again...")
-            self.record(value)
+            self.record(source_name, location_name, value, timestamp, notes)
 
     def commit(self):
         """ Wrapper for SQLite3 connection commit that resets the
-        check_auto_commit counter """
+        _check_auto_commit counter """
 
         self.i = 0
         self.connection.commit()
@@ -125,38 +141,3 @@ class DB(object):
         return self
     def __exit__(self, type, value, traceback):
         self.connection.commit()
-
-class TStopDB(DB):
-
-    def __init__(self, *args, **kwargs):
-        """ Initialize TStopDB - extends DB with facilities for recording T
-        stop enter/leave times """
-
-        DB.__init__(self, *args, **kwargs)
-        self.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS station_ids(
-                id INTEGER PRIMARY KEY,
-                name VARCHAR
-            )
-        """)
-        self.connection.commit()
-
-    def update_location(self, station, status):
-        try:
-            self.record(
-                LOCATION_SOURCE_ID, self.resolve_id("station_ids", station),
-                notes = status
-            )
-            self.check_auto_commit()
-        except sqlite3.OperationalError:
-            print("database busy, trying again...")
-            self.record(station, status)
-
-with TStopDB() as db:
-    while True:
-        db.record("dylos", 1)
-        db.record("dylos2", 1)
-        db.record("dylos3", 1)
-        db.update_location("copley", "entering")
-        db.update_location("copley", "stopped")
-        db.update_location("copley", "leaving")
