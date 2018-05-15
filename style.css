@@ -10,15 +10,15 @@ td {
     cursor: pointer;
     padding: 6px 12px;
     border-width: 4px 0px;
+    border-color: #ffffff;
 }
 td:hover {
     border-style: solid;
-    border-color: #ffffff;
 }
 
 .default {
     padding: 2px;
-    border-spacing: 12px 0px;
+    border-spacing: 6px 0px;
     background-color: default;
     color: #000000;
     cursor: default;
@@ -29,6 +29,7 @@ td:hover {
 
 #status-selector {
     background-color: #000000;
+    width: 100%;
 }
 .selected-status {
     background-color: #80276c;
