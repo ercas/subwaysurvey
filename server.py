@@ -1,14 +1,19 @@
 #!/usr/bin/env python3
 
 import flask
+import os
+import webbrowser
 
 from db import DB
+
+PORT = 8889
 
 app = flask.Flask(__name__)
 
 @app.route("/", methods = ["GET"])
 def index():
-    return flask.jsonify(True)
+    with open("./index.html", "r") as f:
+        return f.read()
 
 @app.route("/new_observation", methods = ["POST"])
 def new_observation():
@@ -37,4 +42,5 @@ def new_observation():
         return flask.jsonify(False)
 
 if (__name__ == "__main__"):
-    app.run(debug = True)
+    webbrowser.open_new_tab("http://localhost:%d" % PORT)
+    app.run(port = PORT, debug = False)

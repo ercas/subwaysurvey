@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <link rel=stylesheet href=style.css>
+        <link rel=stylesheet href=static/style.css>
     </head>
     <body>
         <table class=default style="width: 100%;">
@@ -11,7 +11,7 @@
             </tr>
             <tr>
                 <td class=default>
-                    <form action=http://localhost:5000/new_observation target=response-frame method=post enctype=multipart/form-data>
+                    <form action=new_observation target=response-frame method=post enctype=multipart/form-data>
                         <table class=default>
                             <tr>
                                 <td class=default>
@@ -56,10 +56,10 @@
                     </form>
                 </td>
                 <td class=default>
-                    <iframe src=http://localhost:5000 name=response-frame id=response-frame></iframe>
+                    <iframe name=response-frame id=response-frame></iframe>
                 </td>
                 <td class=default>
-                    <img src=neu.png style="max-width: 100%">
+                    <img src=static/neu.png style="max-width: 100%">
                 </td>
             </tr>
         </table>
@@ -297,6 +297,6 @@
             <br>
         </div>
 
-        <script src=app.js></script>
+        <script src=static/app.js></script>
     </body>
 </html>
