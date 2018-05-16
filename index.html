@@ -4,23 +4,16 @@
         <link rel=stylesheet href=static/style.css>
     </head>
     <body>
+        <br>
         <table class=default style="width: 100%;">
             <tr>
-                <th>post</th>
+                <th>multipart form input</th>
                 <th>response</th>
             </tr>
             <tr>
                 <td class=default>
-                    <form action=new_observation target=response-frame method=post enctype=multipart/form-data>
+                    <form action=update_location target=response-frame method=post enctype=multipart/form-data>
                         <table class=default>
-                            <tr>
-                                <td class=default>
-                                    source
-                                </td>
-                                <td class=default>
-                                    <input type=text name=source_name id=source value=location_change>
-                                </td>
-                            </tr>
                             <tr>
                                 <td class=default>
                                     location
@@ -31,18 +24,10 @@
                             </tr>
                             <tr>
                                 <td class=default>
-                                    value
+                                    status
                                 </td>
                                 <td class=default>
-                                <input type=text name=value id=value>
-                                </td>
-                            </tr>
-                            <tr>
-                                <td class=default>
-                                    notes
-                                </td>
-                                <td class=default>
-                                <input type=text name=notes>
+                                <input type=text name=status id=status>
                                 </td>
                             </tr>
                             <tr>
@@ -59,9 +44,7 @@
                     <iframe name=response-frame id=response-frame></iframe>
                 </td>
                 <td class=default style="text-align: center;">
-                    <img src=static/neu.png style="max-width: 100%">
-                    <br>
-                    <h2>subway survey</h2>
+                    <img src=static/neu.png style="max-width: 100%; max-height: 100%;">
                 </td>
             </tr>
         </table>
@@ -101,10 +84,10 @@
                     <td>allston street</td>
                     <td>griggs street</td>
                     <td>harvard ave</td>
-                    <td>packargs corner</td>
+                    <td>packards corner</td>
                     <td>babcock street</td>
                     <td>pleasant street</td>
-                    <td>st paul street</td>
+                    <td>st paul street b</td>
                     <td>boston university west</td>
                     <td>boston university central</td>
                     <td>boston university east</td>
@@ -136,7 +119,7 @@
                     <td>brandon hall</td>
                     <td>summit ave</td>
                     <td>collidge corner</td>
-                    <td>st paul street</td>
+                    <td>st paul street c</td>
                     <td>kent street</td>
                     <td>hawes street</td>
                     <td>st mary's street</td>

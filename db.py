@@ -17,41 +17,44 @@ class DB(object):
         :param str path: The path that the database will be stored at
         :param int auto_commit_interval: The number of inserts after which a
             database commit will be forced
+        :return: A boolean signifying if the database has been set up
         """
 
         self.db_path = path
         self.id_cache = {}
         self.auto_commit_interval = auto_commit_interval
         self.i = 0
-
-        setup = False
+        self.setup = False
         if (not os.path.isfile(self.db_path)):
-            setup = True
+            self.setup = True
 
         self.connection = sqlite3.connect(self.db_path)
         self.cursor = self.connection.cursor()
 
-        if (setup):
-            print("intiializing new database")
-            for id_table in ["sources", "locations"]:
-                self.cursor.execute("""
-                    CREATE TABLE IF NOT EXISTS %s(
-                        id INTEGER PRIMARY KEY,
-                        name VARCHAR UNIQUE
-                    )
-                """ % id_table)
+        if (self.setup):
+            self._setup()
+
+    def _setup(self):
+        print("intializing new database")
+        for id_table in ["source_ids", "location_ids"]:
             self.cursor.execute("""
-                CREATE TABLE IF NOT EXISTS observations(
-                    timestamp FLOAT,
-                    source_id INTEGER,
-                    location_id INTEGER,
-                    value FLOAT,
-                    notes VARCHAR,
-                    FOREIGN KEY(source_id) REFERENCES sources(id),
-                    FOREIGN KEY(location_id) REFERENCES locations(id)
+                CREATE TABLE %s(
+                    id INTEGER PRIMARY KEY,
+                    name VARCHAR UNIQUE
                 )
-            """)
-            self.connection.commit()
+            """ % id_table)
+        self.cursor.execute("""
+            CREATE TABLE observations(
+                timestamp FLOAT,
+                source_id INTEGER,
+                location_id INTEGER,
+                value FLOAT,
+                notes VARCHAR,
+                FOREIGN KEY(source_id) REFERENCES source_ids(id),
+                FOREIGN KEY(location_id) REFERENCES location_ids(id)
+            )
+        """)
+        self.connection.commit()
 
     def _check_auto_commit(self):
         """ Automatically commit data to the database if the number of observations
@@ -121,9 +124,10 @@ class DB(object):
                     VALUES (?, ?, ?, ?, ?)
                 """,
                 (
-                    timestamp, self.resolve_id("sources", source_name),
-                    self.resolve_id("locations", location_name),
-                    value, notes)
+                    timestamp, self.resolve_id("source_ids", source_name),
+                    self.resolve_id("location_ids", location_name),
+                    value, notes
+                )
             )
             self._check_auto_commit()
         except sqlite3.OperationalError:
@@ -141,3 +145,80 @@ class DB(object):
         return self
     def __exit__(self, type, value, traceback):
         self.connection.commit()
+
+class TStationDB(DB):
+
+    def __init__(self, *args, **kwargs):
+        """ Initialize database that extends the DB class with functionality
+        for recording MBTA stations """
+
+        DB.__init__(self, *args, **kwargs)
+
+        if (self.setup):
+            print("initializing location history tables")
+            self.cursor.execute("""
+                CREATE TABLE status_ids(
+                    id INTEGER PRIMARY KEY,
+                    name VARCHAR UNIQUE
+                )
+            """)
+            self.cursor.execute("""
+                CREATE TABLE location_history(
+                    timestamp FLOAT,
+                    location_id INTEGER,
+                    status_id INTEGER,
+                    FOREIGN KEY(location_id) REFERENCES location_ids(id),
+                    FOREIGN KEY(status_id) REFERENCES status_ids(id)
+                )
+            """)
+
+            # modify the observations table so that it has an additional
+            # status_id column
+            self.cursor.execute("DROP TABLE observatoins")
+            self.cursor.execute("""
+                CREATE TABLE observations(
+                    timestamp FLOAT,
+                    source_id INTEGER,
+                    location_id INTEGER,
+                    status_id INTEGER,
+                    value FLOAT,
+                    notes VARCHAR,
+                    FOREIGN KEY(source_id) REFERENCES source_ids(id),
+                    FOREIGN KEY(location_id) REFERENCES location_ids(id)
+                    FOREIGN KEY(status_id) REFERENCES status_ids(id)
+                )
+            """)
+            self.connection.commit()
+
+
+    def record_location(self, location_name, status_name, timestamp = None):
+        """ Record a timestamped observation to the database
+
+        :param str location_name: The name of the location
+        :param str status_name: The status of the location (entering,
+            leaving, stopped, etc)
+        :param float timestamp: The time that the observation was taken; defaults
+            to the current system time
+        """
+
+        if (timestamp is None):
+            timestamp = time.time()
+
+        try:
+            self.cursor.execute(
+                """
+                    INSERT INTO location_history(timestamp, location_id, status_id)
+                    VALUES (?, ?, ?)
+                """,
+                (
+                    timestamp, self.resolve_id("location_ids", location_name),
+                    self.resolve_id("status_ids", status_name)
+                )
+            )
+            self._check_auto_commit()
+        except sqlite3.OperationalError:
+            print("database busy, trying again...")
+            self.record(source_name, location_name, value, timestamp, notes)
+
+if (__name__ == "__main__"):
+    db = TStationDB()

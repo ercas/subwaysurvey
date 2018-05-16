@@ -4,7 +4,7 @@ import flask
 import os
 import webbrowser
 
-from db import DB
+from db import TStationDB
 
 PORT = 8889
 
@@ -15,29 +15,23 @@ def index():
     with open("./index.html", "r") as f:
         return f.read()
 
-@app.route("/new_observation", methods = ["POST"])
+@app.route("/update_location", methods = ["POST"])
 def new_observation():
     form = flask.request.form
     if (form):
-        notes = form.get("notes")
-        if (len(notes) == 0):
-            notes = None
-
         observation = (
-            form.get("source_name"), form.get("location_name"),
-            form.get("value"), notes
+            form.get("location_name"), form.get("status")
         )
 
-        for field in range(3):
-            if (len(observation[field]) == 0):
+        for field in observation:
+            if (len(observation) == 0):
                 return flask.jsonify(False)
 
         print(observation)
 
-        db = DB()
-        db.record(*observation)
-        db.commit()
-        return flask.jsonify(observation)
+        with TStationDB() as db:
+            db.record_location(*observation)
+        return flask.jsonify({"received": observation})
     else:
         return flask.jsonify(False)
 

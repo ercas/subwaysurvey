@@ -1,24 +1,26 @@
-var stationButtons = document.getElementById("subway-lines").getElementsByTagName("td"),
+var subwayLinesTable = document.getElementById("subway-lines"),
+    stationButtons = subwayLinesTable.getElementsByTagName("td"),
+    activeStationButton = null,
     sourceInput = document.getElementById("source"),
     locationInput = document.getElementById("location"),
     submitButton = document.getElementById("submit"),
-    responseFrame = document.getElementById("response-frame");
+    responseFrame = document.getElementById("response-frame"),
     stationName = "northeastern";
 
 var statusSelector = document.getElementById("status-selector"),
-    valueInput = document.getElementById("value"),
+    statusInput = document.getElementById("status"),
     locationStatuses = ["stopped", "entering", "leaving", "left"],
-    locationStatus = 0;
+    locationStatus = "stopped";
 
 // update the forms and ui to reflect inputs
 function updateLocation() {
     locationInput.value = stationName;
-    valueInput.value = locationStatus;
+    statusInput.value = locationStatus;
 
     statusButtons = statusSelector.getElementsByTagName("td");
     for (var j = 0; j < statusButtons.length; j++) {
         var statusButton = statusButtons[j];
-        if (j == locationStatus) {
+        if (statusButton.innerHTML.startsWith(locationStatus)) {
             statusButton.setAttribute("class", "selected-status");
         } else {
             statusButton.removeAttribute("class");
@@ -28,7 +30,7 @@ function updateLocation() {
     for (var i = 0; i < stationButtons.length; i++) {
         var stationButton = stationButtons[i];
         if (stationButton.innerHTML == stationName) {
-            console.log(stationName);
+            activeStationButton = stationButton;
             stationButton.setAttribute("class", "selected-station");
         } else if (stationButton.innerHTML.length != 0) {
             stationButton.removeAttribute("class");
@@ -43,13 +45,13 @@ statusSelector.appendChild(newRow);
 for (var i = 0; i < locationStatuses.length; i++) {
     var thisLocationStatus = locationStatuses[i];
     td = document.createElement("td");
-    td.innerHTML = thisLocationStatus + " (" + i + ")";
-    (function(thisLocationStatus, index) {
+    td.innerHTML = thisLocationStatus + " (" + i +  ")";
+    (function(thisLocationStatus) {
         td.onclick = function() {
-            locationStatus = index;
+            locationStatus = thisLocationStatus;
             updateLocation();
         }
-    })(thisLocationStatus, i);
+    })(thisLocationStatus);
     statusSelector.appendChild(td);
 }
 
@@ -74,20 +76,85 @@ for (var i = 0; i < stationButtons.length; i++) {
 
 }
 
+// select station right/left
+/*
+function xNav(direction) {
+    var activeRow = activeStationButton.parentNode;
+    var rowButtons = activeRow.getElementsByTagName("td");
+    for (var i = 0; i < rowButtons.length; i++) {
+        if (rowButtons[i].innerHTML == stationName) {
+            break
+        }
+    }
+    var newButton = rowButtons[i + direction];
+    if (typeof newButton !== undefined) {
+        newButton.click();
+        newButton.focus();
+    }
+}
+*/
+
+var stationButtonsTable = [];
+var lines = subwayLinesTable.getElementsByTagName("tr");
+for (var i = 0; i < lines.length; i++) {
+    stationButtonsTable.push(lines[i].getElementsByTagName("td"));
+}
+
+function findTableCoordinates() {
+    for (var i = 0; i < stationButtonsTable.length; i++) {
+        var line = stationButtonsTable[i]
+        for (var j = 0; j < line.length; j++) {
+            if (line[j] == activeStationButton) {
+                return [i, j];
+            }
+        }
+    }
+}
+
+function xNav(xDirection, yDirection) {
+    var coords = findTableCoordinates();
+    console.log(coords);
+    var newButton = stationButtonsTable[coords[0] + yDirection][coords[1] + xDirection];
+    console.log(coords[0] + yDirection);
+    if (newButton !== undefined) {
+        newButton.click();
+        newButton.scrollIntoView();
+    }
+}
+
 // keybindings
 document.onkeydown = function(e) {
     console.log(e.key);
     var i = parseInt(e.key);
     if (Number.isInteger(i) && i <= locationStatuses.length) {
-        locationStatus = i;
+        locationStatus = locationStatuses[i];
         updateLocation();
-    } else if (e.key == "Enter") {
-        submitButton.click();
+    } else switch(e.key) {
+        case "Enter":
+            submitButton.click();
+            break;
+        case "i":
+            locationInput.select();
+            break;
+        case "h":
+        case "ArrowLeft":
+            xNav(-1, 0);
+            break;
+        case "j":
+        case "ArrowDown":
+            xNav(0, 1);
+            break;
+        case "k":
+        case "ArrowUp":
+            xNav(0, -1);
+            break;
+        case "l":
+        case "ArrowRight":
+            xNav(1, 0);
+            break;
+        default:
+            break;
     }
-}
-
-submitButton.onclick = function() {
-    responseFrame.setAttribute("src", "about:blank");
 }
 
 updateLocation();
