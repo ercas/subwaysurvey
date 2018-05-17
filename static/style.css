@@ -34,7 +34,7 @@ iframe {
     border-style: none;
 }
 
-#status-selector {
+.selector {
     background-color: #000000;
     width: 100%;
 }
@@ -58,7 +58,7 @@ iframe {
 .red-line {
     background-color: #df2826;
 }
-.selected-station {
+.selector-active {
     background-color: #80276c;
 }
 .blank {

@@ -7,7 +7,8 @@
         <br>
         <table class=default style="width: 100%;">
             <tr>
-                <th>multipart form input</th>
+                <th>location status input</th>
+                <th>manual sensor input</th>
                 <th>response</th>
             </tr>
             <tr>
@@ -24,10 +25,47 @@
                             </tr>
                             <tr>
                                 <td class=default>
+                                    position
+                                </td>
+                                <td class=default>
+                                <input type=text name=position_name id=position>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class=default>
                                     status
                                 </td>
                                 <td class=default>
                                 <input type=text name=status id=status>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class=default>
+                                </td>
+                                <td class=default>
+                                    <input type=submit value=submit id=submit style="width: 100%;">
+                                </td>
+                            </tr>
+                        </table>
+                    </form>
+                </td>
+                <td class=default>
+                    <form action=new_observation target=response-frame method=post enctype=multipart/form-data>
+                        <table class=default>
+                            <tr>
+                                <td class=default>
+                                    sensor
+                                </td>
+                                <td class=default>
+                                <input type=text name=sensor id=sensor>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class=default>
+                                    value
+                                </td>
+                                <td class=default>
+                                <input type=text name=value id=value>
                                 </td>
                             </tr>
                             <tr>
@@ -50,7 +88,11 @@
         </table>
 
         <br>
-        <table id=status-selector>
+        <table id=status-selector class=selector>
+        </table>
+
+        <br>
+        <table id=position-selector class=selector>
         </table>
 
         <br>

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 
+import csv
 import os
 import sqlite3
 import time
@@ -182,18 +183,21 @@ class TStationDB(DB):
 
         if (self.setup):
             print("initializing location history tables")
-            self.cursor.execute("""
-                CREATE TABLE status_ids(
-                    id INTEGER PRIMARY KEY,
-                    name VARCHAR UNIQUE
-                )
-            """)
+            for id_table in ["position_ids", "status_ids"]:
+                self.cursor.execute("""
+                    CREATE TABLE %s(
+                        id INTEGER PRIMARY KEY,
+                        name VARCHAR UNIQUE
+                    )
+                """ % id_table)
             self.cursor.execute("""
                 CREATE TABLE location_history(
                     timestamp FLOAT,
                     location_id INTEGER,
+                    position_id INTEGER,
                     status_id INTEGER,
                     FOREIGN KEY(location_id) REFERENCES location_ids(id),
+                    FOREIGN KEY(position_id) REFERENCES position_ids(id),
                     FOREIGN KEY(status_id) REFERENCES status_ids(id)
                 )
             """)
@@ -206,11 +210,13 @@ class TStationDB(DB):
                     timestamp FLOAT,
                     source_id INTEGER,
                     location_id INTEGER,
+                    position_id INTEGER,
                     status_id INTEGER,
                     value FLOAT,
                     notes VARCHAR,
                     FOREIGN KEY(source_id) REFERENCES source_ids(id),
-                    FOREIGN KEY(location_id) REFERENCES location_ids(id)
+                    FOREIGN KEY(location_id) REFERENCES location_ids(id),
+                    FOREIGN KEY(position_id) REFERENCES position_ids(id),
                     FOREIGN KEY(status_id) REFERENCES status_ids(id)
                 )
             """)
@@ -218,12 +224,14 @@ class TStationDB(DB):
 
     # overwrite the record function with additional location_status arg
     def record(self, source_name, value, location_name = None,
-               status_name = None, timestamp = None, notes = None):
+               position_name = None, status_name = None, timestamp = None,
+               notes = None):
         """ Record a timestamped observation to the database
 
         :param str source_name: The name of the source
         :param float value: The value of the observation
         :param str location_name: The name of the location
+        :param str position_name: The name of the position
         :param str status_name: The status of the location (entering,
             leaving, stopped, etc)
         :param float timestamp: The time that the observation was taken; defaults
@@ -241,8 +249,8 @@ class TStationDB(DB):
             """,
             (
                 timestamp, self.resolve_id("source_ids", source_name),
-                self.resolve_id("status_ids", status_name),
                 self.resolve_id("location_ids", location_name),
+                self.resolve_id("status_ids", status_name),
                 value, notes
             )
         )
@@ -254,6 +262,8 @@ class TStationDB(DB):
         :param str location_name: The name of the location
         :param str status_name: The status of the location (entering,
             leaving, stopped, etc)
+        :param str status_name: The position at the location (subway car,
+            platform center, etc)
         :param float timestamp: The time that the observation was taken; defaults
             to the current system time
         """
@@ -263,11 +273,12 @@ class TStationDB(DB):
 
         self._exec(
             """
-                INSERT INTO location_history(timestamp, location_id, status_id)
-                VALUES (?, ?, ?)
+                INSERT INTO location_history(timestamp, location_id, position_id, status_id)
+                VALUES (?, ?, ?, ?)
             """,
             (
                 timestamp, self.resolve_id("location_ids", location_name),
+                self.resolve_id("position_ids", status_name),
                 self.resolve_id("status_ids", status_name)
             )
         )
@@ -283,11 +294,17 @@ class TStationDB(DB):
 
         self.cursor.execute(
             """
-                SELECT location_id, status_id
+                SELECT location_ids.name, status_ids.name
                 FROM location_history
-                WHERE timestamp < ?
-                ORDER BY rowid DESC
-                LIMIT 1;
+                INNER JOIN location_ids
+                    ON location_ids.id = location_history.location_id
+                INNER JOIN position_ids
+                    ON position_ids.id = location_history.position_id
+                INNER JOIN status_ids
+                    ON status_ids.id = location_history.status_id
+                WHERE location_history.timestamp < ?
+                ORDER BY location_history.rowid DESC
+                LIMIT 1
             """,
             (timestamp,)
         )
@@ -295,6 +312,32 @@ class TStationDB(DB):
             return self.cursor.fetchone()
         except TypeError:
             return None
+
+    def observations_to_csv(self, output_file):
+        """ Join tables and write observations to csv files
+
+        :param str output_file: The file to write data to
+        """
+        with open(output_file, "w") as f:
+            writer = csv.writer(f)
+            writer.writerow(["timestamp", "source", "location", "position", "status", "value", "notes"])
+            self.cursor.execute(
+                """
+                    SELECT observations.timestamp, source_ids.name, location_ids.name, position_ids.name, status_ids.name, observations.value, observations.notes
+                    FROM observations
+                    INNER JOIN source_ids
+                        ON source_ids.id = observations.source_id
+                    INNER JOIN location_ids
+                        ON location_ids.id = observations.location_id
+                    INNER JOIN position_ids
+                        ON position_ids.id = location_history.position_id
+                    INNER JOIN status_ids
+                        ON status_ids.id = observations.status_id
+                """
+            )
+            for row in self.cursor:
+                writer.writerow(row)
+        print("wrote to %s" % output_file)
 
 if (__name__ == "__main__"):
     with TStationDB() as db:

@@ -20,7 +20,7 @@ def new_observation():
     form = flask.request.form
     if (form):
         observation = (
-            form.get("location_name"), form.get("status")
+            form.get("location_name"), form.get("position_name"), form.get("status")
         )
 
         for field in observation:
