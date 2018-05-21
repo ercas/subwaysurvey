@@ -2,7 +2,9 @@ var subwayLinesTable = document.getElementById("subway-lines"),
     stationButtons = subwayLinesTable.getElementsByTagName("td"),
     activeStationButton = null,
     sourceInput = document.getElementById("source"),
+    statusInput = document.getElementById("status"),
     locationInput = document.getElementById("location"),
+    positionInput = document.getElementById("position"),
     submitButton = document.getElementById("submit"),
     responseFrame = document.getElementById("response-frame"),
     station = "northeastern";
@@ -24,44 +26,66 @@ function buildSelector(containingTable, options, callback, label_index_adjust = 
     containingTable.appendChild(newRow);
 }
 
-// construct status selector
-var statusSelector = document.getElementById("status-selector"),
-    statusInput = document.getElementById("status"),
-    locations = ["entering", "stopped", "leaving", "left"],
-    location_ = "stopped";
-buildSelector(statusSelector, locations, function(option) {
-    location_ = option;
-    update();
-});
-var statusButtons = statusSelector.getElementsByTagName("td");
+function Selector(containingTable, options, defaultOption = 1, label_index_adjust = 1) {
+    this.options = options;
+    this.activeOption = this.options[defaultOption];
+    this.buttons = [];
 
-// construct position selector
-var positionSelector = document.getElementById("position-selector"),
-    positionInput = document.getElementById("position"),
-    positions = ["subway car", "platform center", "platform entrance", "platform exit"],
-    position = "subway car";
-buildSelector(positionSelector, positions, function(option) {
-    position = option;
-    update();
-}, 5);
-var positionButtons = positionSelector.getElementsByTagName("td");
+    var newRow = document.createElement("tr"),
+        selector = this,
+        firstUpdate = true;
 
-function updateSelector(selectorButtons, selectedButtonText) {
-    for (var j = 0; j < selectorButtons.length; j++) {
-        var selectorButton = selectorButtons[j];
-        if (selectorButton.innerHTML.startsWith(selectedButtonText)) {
-            selectorButton.setAttribute("class", "selected-status");
+    this.selectOption = function(option) {
+        this.activeOption = option;
+        for (var j = 0; j < this.buttons.length; j++) {
+            var button = this.buttons[j];
+            if (button.innerHTML.startsWith(option)) {
+                button.setAttribute("class", "selected-status");
+            } else {
+                button.removeAttribute("class");
+            }
+        }
+        if (firstUpdate) {
+            firstUpdate = false;
         } else {
-            selectorButton.removeAttribute("class");
+            updateForms();
         }
     }
+
+    for (var i = 0; i < options.length; i++) {
+        var thisOption = options[i];
+        td = document.createElement("td");
+        td.innerHTML = thisOption + " (" + (i + label_index_adjust) +  ")";
+        (function(selector, option) {
+            td.onclick = function() {
+                selector.selectOption(option);
+            }
+        })(selector, thisOption);
+        newRow.appendChild(td);
+        this.buttons.push(td);
+    }
+
+    containingTable.appendChild(newRow);
+    this.selectOption(this.activeOption);
+    console.log(options, defaultOption);
 }
 
+var statusSelector = new Selector(
+    document.getElementById("status-selector"),
+    ["entering", "stopped", "leaving", "left"],
+    1
+);
+var positionSelector = new Selector(
+    document.getElementById("position-selector"),
+    ["subway car", "platform center", "platform entrance", "platform exit"],
+    0, 5
+);
+
 // update the forms and ui to reflect inputs
-function update() {
+function updateForms() {
     locationInput.value = station;
-    statusInput.value = location_;
-    positionInput.value = position;
+    statusInput.value = statusSelector.activeOption;
+    positionInput.value = positionSelector.activeOption;
 
     for (var i = 0; i < stationButtons.length; i++) {
         var stationButton = stationButtons[i];
@@ -72,9 +96,6 @@ function update() {
             stationButton.removeAttribute("class");
         }
     }
-
-    updateSelector(statusButtons, location_);
-    updateSelector(positionButtons, position);
 }
 
 // station selector
@@ -91,7 +112,7 @@ for (var i = 0; i < stationButtons.length; i++) {
         (function(thisStation) {
             stationButton.onclick = function() {
                 station = thisStation;
-                update();
+                updateForms();
             }
         })(thisStation);
     }
@@ -133,12 +154,10 @@ document.onkeydown = function(e) {
         console.log(e.key, e.target);
         var i = parseInt(e.key);
         if (Number.isInteger(i)) {
-            if (i <= locations.length) {
-                location_ = locations[i - 1];
-                update();
-            } else if (i <= positions.length + 4) {
-                position = positions[i - 5];
-                update();
+            if (i <= statusSelector.options.length) {
+                statusSelector.selectOption(statusSelector.options[i - 1]);
+            } else if (i <= positionSelector.options.length + 4) {
+                positionSelector.selectOption(positionSelector.options[i - 1 - statusSelector.options.length]);
             }
         } else switch(e.key) {
             case "Enter":
@@ -149,7 +168,7 @@ document.onkeydown = function(e) {
                 for (var i = 0; i < statusButtons.length; i++) {
                     if (locations[i] == location_) {
                         location_ = locations[(i + 1) % locations.length];
-                        update();
+                        updateForms();
                         break;
                     }
                 }
@@ -176,4 +195,4 @@ document.onkeydown = function(e) {
     }
 }
 
-update();
+updateForms();
