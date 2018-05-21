@@ -9,23 +9,6 @@ var subwayLinesTable = document.getElementById("subway-lines"),
     responseFrame = document.getElementById("response-frame"),
     station = "northeastern";
 
-// selector constructor
-function buildSelector(containingTable, options, callback, label_index_adjust = 1) {
-    var newRow = document.createElement("tr");
-    for (var i = 0; i < options.length; i++) {
-        var thisOption = options[i];
-        td = document.createElement("td");
-        td.innerHTML = thisOption + " (" + (i + label_index_adjust) +  ")";
-        (function(option) {
-            td.onclick = function() {
-                callback(option);
-            }
-        })(thisOption);
-        newRow.appendChild(td);
-    }
-    containingTable.appendChild(newRow);
-}
-
 function Selector(containingTable, options, defaultOption = 1, label_index_adjust = 1) {
     this.options = options;
     this.activeOption = this.options[defaultOption];
@@ -67,7 +50,6 @@ function Selector(containingTable, options, defaultOption = 1, label_index_adjus
 
     containingTable.appendChild(newRow);
     this.selectOption(this.activeOption);
-    console.log(options, defaultOption);
 }
 
 var statusSelector = new Selector(
