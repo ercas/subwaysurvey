@@ -192,10 +192,10 @@ class TStationDB(DB):
                 """ % id_table)
             self.cursor.execute("""
                 CREATE TABLE location_history(
-                    timestamp FLOAT,
-                    location_id INTEGER,
-                    position_id INTEGER,
-                    status_id INTEGER,
+                    timestamp FLOAT NOT NULL,
+                    location_id INTEGER NOT NULL,
+                    position_id INTEGER NOT NULL,
+                    status_id INTEGER NOT NULL,
                     FOREIGN KEY(location_id) REFERENCES location_ids(id),
                     FOREIGN KEY(position_id) REFERENCES position_ids(id),
                     FOREIGN KEY(status_id) REFERENCES status_ids(id)
@@ -208,11 +208,11 @@ class TStationDB(DB):
             self.cursor.execute("""
                 CREATE TABLE observations(
                     timestamp FLOAT,
-                    source_id INTEGER,
+                    source_id INTEGER NOT NULL,
                     location_id INTEGER,
                     position_id INTEGER,
                     status_id INTEGER,
-                    value FLOAT,
+                    value FLOAT NOT NULL,
                     notes VARCHAR,
                     FOREIGN KEY(source_id) REFERENCES source_ids(id),
                     FOREIGN KEY(location_id) REFERENCES location_ids(id),
