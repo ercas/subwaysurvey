@@ -126,9 +126,10 @@ var numpadContainer = document.getElementById("numpad-container"),
         [7, 8, 9],
         [4, 5, 6],
         [1, 2, 3],
-        [" ", ".", "enter"]
+        ["<", ".", ">"],
+        ["back", "clear", "enter"]
     ],
-    numpadRows = 4, // just to make programming easier
+    numpadRows = 5, // just to make programming easier
     numpadColumns = 3;
 
 numpadTable.setAttribute("id", "numpad-table");
@@ -148,9 +149,15 @@ for (var row = 0; row < numpadRows; row++) {
             value = numpadKeys[row][column];
         button.innerHTML = value;
 
-        // this can probably be refactored in an OOP way
+        // refactor this in a less redundant way later
         switch (value) {
             case " ":
+                break;
+            case ">":
+                // TODO: next input
+                break;
+            case "<":
+                // TODO: previous input
                 break;
             case "enter":
                 (function(button) {
@@ -158,6 +165,30 @@ for (var row = 0; row < numpadRows; row++) {
                         flashButton(button);
                         if (document.activeElement.tagName == "INPUT") {
                             submitContainingForm(document.activeElement);
+                        } else {
+                            console.log("no input selected");
+                        }
+                    }
+                })(button);
+                break;
+            case "clear":
+                (function(button) {
+                    button.onclick = function() {
+                        flashButton(button);
+                        if (document.activeElement.tagName == "INPUT") {
+                            document.activeElement.value = "";
+                        } else {
+                            console.log("no input selected");
+                        }
+                    }
+                })(button);
+                break;
+            case "back":
+                (function(button) {
+                    button.onclick = function() {
+                        flashButton(button);
+                        if (document.activeElement.tagName == "INPUT") {
+                            document.activeElement.value = document.activeElement.value.slice(0, -1);
                         } else {
                             console.log("no input selected");
                         }

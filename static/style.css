@@ -22,6 +22,11 @@ td {
 td:hover {
     border-style: none;
 }
+#branding {
+    font-family: serif;
+    font-size: 16px;
+    color: #615445;
+}
 
 /* sensor inputs */
 input, input[type=button], input[type=submit] {
