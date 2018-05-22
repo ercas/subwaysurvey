@@ -91,6 +91,3 @@ input, input[type=button], input[type=submit] {
     color: #ffffff;
     cursor: pointer;
 }
-#numpad-table td:active {
-    background-color: #6a6a6a;
-}

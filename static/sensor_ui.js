@@ -10,6 +10,7 @@ function setAttributes(element, attributes) {
     }
 }
 
+// SENSOR INPUT INITIALIZATION
 function SensorInput(sensorName) {
     this.form = document.createElement("form");
     this.inputs = {
@@ -118,26 +119,33 @@ document.addEventListener("keydown", function(e) {
     }
 });
 
+// NUMPAD INITIALIZATION
 var numpadContainer = document.getElementById("numpad-container"),
-    numpadTable = document.createElement("table");
-
-numpadTable.setAttribute("id", "numpad-table");
-numpadContainer.appendChild(numpadTable);
-
-var keys = [
+    numpadTable = document.createElement("table"),
+    numpadKeys = [
         [7, 8, 9],
         [4, 5, 6],
         [1, 2, 3],
         [" ", ".", "enter"]
     ],
-    rows = 4, // just to make programming easier
-    columns = 3;
+    numpadRows = 4, // just to make programming easier
+    numpadColumns = 3;
 
-for (var row = 0; row < rows; row++) {
+numpadTable.setAttribute("id", "numpad-table");
+numpadContainer.appendChild(numpadTable);
+
+function flashButton(button) {
+    button.setAttribute("style", "background-color: #6a6a6a;");
+    window.setTimeout(function() {
+        button.removeAttribute("style");
+    }, 100);
+}
+
+for (var row = 0; row < numpadRows; row++) {
     var newRow = document.createElement("tr");
-    for (var column = 0; column < columns; column++) {
+    for (var column = 0; column < numpadColumns; column++) {
         var button = document.createElement("td"),
-            value = keys[row][column];
+            value = numpadKeys[row][column];
         button.innerHTML = value;
 
         // this can probably be refactored in an OOP way
@@ -147,8 +155,11 @@ for (var row = 0; row < rows; row++) {
             case "enter":
                 (function(button) {
                     button.onclick = function() {
+                        flashButton(button);
                         if (document.activeElement.tagName == "INPUT") {
                             submitContainingForm(document.activeElement);
+                        } else {
+                            console.log("no input selected");
                         }
                     }
                 })(button);
@@ -156,8 +167,11 @@ for (var row = 0; row < rows; row++) {
             default:
                 (function(button, value) {
                     button.onclick = function() {
+                        flashButton(button);
                         if (document.activeElement.tagName == "INPUT") {
                             document.activeElement.value = document.activeElement.value + value;
+                        } else {
+                            console.log("no input selected");
                         }
                     }
                 })(button, value);
