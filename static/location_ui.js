@@ -134,11 +134,11 @@ function stationTableNav(xDirection, yDirection) {
     }
 }
 
-// keybindings
-document.onkeydown = function(e) {
-    if (e.target == document.body) {
-        console.log(e.key, e.target);
-        var i = parseInt(e.key);
+document.addEventListener("keydown", function(e) {
+    var key = e.key,
+        target = e.target;
+    if (target == document.body) {
+        var i = parseInt(key);
         if (Number.isInteger(i)) {
             if (i <= statusSelector.options.length) {
                 statusSelector.selectOption(statusSelector.options[i - 1]);
@@ -147,10 +147,7 @@ document.onkeydown = function(e) {
                 positionSelector.selectOption(positionSelector.options[i - 1 - statusSelector.options.length]);
                 updateForms();
             }
-        } else switch(e.key) {
-            case "Enter":
-                submitButton.click();
-                break;
+        } else switch (key) {
             case "Tab":
                 e.preventDefault();
                 statusSelector.cycle();
@@ -181,6 +178,6 @@ document.onkeydown = function(e) {
                 break;
         }
     }
-}
+});
 
 updateForms();
