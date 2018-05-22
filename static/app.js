@@ -15,8 +15,7 @@ function Selector(containingTable, options, defaultOption = 1, label_index_adjus
     this.buttons = [];
 
     var newRow = document.createElement("tr"),
-        selector = this,
-        firstUpdate = true;
+        selector = this;
 
     this.selectOption = function(option) {
         this.activeOption = option;
@@ -28,10 +27,14 @@ function Selector(containingTable, options, defaultOption = 1, label_index_adjus
                 button.removeAttribute("class");
             }
         }
-        if (firstUpdate) {
-            firstUpdate = false;
-        } else {
-            updateForms();
+    }
+
+    this.cycle = function() {
+        for (var i = 0; i < this.options.length; i++) {
+            if (this.options[i] == this.activeOption) {
+                this.selectOption(this.options[(i + 1) % this.options.length]);
+                break;
+            }
         }
     }
 
@@ -42,6 +45,7 @@ function Selector(containingTable, options, defaultOption = 1, label_index_adjus
         (function(selector, option) {
             td.onclick = function() {
                 selector.selectOption(option);
+                updateForms();
             }
         })(selector, thisOption);
         newRow.appendChild(td);
@@ -60,7 +64,8 @@ var statusSelector = new Selector(
 var positionSelector = new Selector(
     document.getElementById("position-selector"),
     ["subway car", "platform center", "platform entrance", "platform exit"],
-    0, 5
+    0,
+    5
 );
 
 // update the forms and ui to reflect inputs
@@ -131,15 +136,16 @@ function stationTableNav(xDirection, yDirection) {
 
 // keybindings
 document.onkeydown = function(e) {
-    // ignore input for fields
     if (e.target == document.body) {
         console.log(e.key, e.target);
         var i = parseInt(e.key);
         if (Number.isInteger(i)) {
             if (i <= statusSelector.options.length) {
                 statusSelector.selectOption(statusSelector.options[i - 1]);
+                updateForms();
             } else if (i <= positionSelector.options.length + 4) {
                 positionSelector.selectOption(positionSelector.options[i - 1 - statusSelector.options.length]);
+                updateForms();
             }
         } else switch(e.key) {
             case "Enter":
@@ -147,13 +153,13 @@ document.onkeydown = function(e) {
                 break;
             case "Tab":
                 e.preventDefault();
-                for (var i = 0; i < statusButtons.length; i++) {
-                    if (locations[i] == location_) {
-                        location_ = locations[(i + 1) % locations.length];
-                        updateForms();
-                        break;
-                    }
-                }
+                statusSelector.cycle();
+                updateForms();
+                break;
+            case "`":
+                e.preventDefault();
+                positionSelector.cycle();
+                updateForms();
                 break;
             case "h":
             case "ArrowLeft":

@@ -9,6 +9,7 @@
             <tr>
                 <th>location input</th>
                 <th>manual sensor input</th>
+                <th>manual sensor input</th>
                 <th>response</th>
             </tr>
             <tr>
@@ -57,7 +58,7 @@
                                     sensor
                                 </td>
                                 <td class=default>
-                                    <input type=text name=sensor id=sensor>
+                                    <input type=text name=sensor id=sensor value="dylos smallparticles" readonly>
                                 </td>
                             </tr>
                             <tr>
@@ -85,6 +86,41 @@
                             </tr>
                         </table>
                     </form>
+                </td>
+                <td class=default>
+                        <table class=default>
+                            <tr>
+                                <td class=default>
+                                    sensor
+                                </td>
+                                <td class=default>
+                                    <input type=text name=sensor id=sensor value="3m sd200 slm" readonly>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class=default>
+                                    value
+                                </td>
+                                <td class=default>
+                                    <input type=text name=value id=value>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class=default>
+                                    notes
+                                </td>
+                                <td class=default>
+                                    <input type=text name=notes id=notes>
+                                </td>
+                            </tr>
+                            <tr>
+                                <td class=default>
+                                </td>
+                                <td class=default>
+                                    <input type=submit value=submit id=submit style="width: 100%;">
+                                </td>
+                            </tr>
+                        </table>
                 </td>
                 <td class=default>
                     <iframe name=response-frame id=response-frame></iframe>
