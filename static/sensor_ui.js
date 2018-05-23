@@ -128,13 +128,21 @@ document.addEventListener("keydown", function(e) {
 // NUMPAD INITIALIZATION
 var numpadContainer = document.getElementById("numpad-container"),
     numpadTable = document.createElement("table"),
+    numpadIcons = {
+        submitLocation: "📍⏎",
+        prevForm: "⇦🗎",
+        nextForm: "🗎⇨",
+        delLeft: "⌫",
+        clear: "⌧",
+        submitActive: "⏎"
+    },
     numpadKeys = [
         [7, 8, 9],
         [4, 5, 6],
         [1, 2, 3],
-        [" ", 0, "📍⏎"],
-        ["⇦🗎", ".", "🗎⇨"],
-        ["⌫", "⌧", "⏎"]
+        [" ", 0, numpadIcons.submitLocation],
+        [numpadIcons.prevForm, ".", numpadIcons.nextForm],
+        [numpadIcons.delLeft, numpadIcons.clear, numpadIcons.submitActive]
     ],
     numpadRows = 6, // just to make programming easier
     numpadColumns = 3;
@@ -172,13 +180,14 @@ function NumpadButton(buttonText, formFocusedFunction = null, noFormFocusedFunct
 }
 
 function cycleSensorInputs(direction) {
-    var activeSensorInput = getContainingSensorInput(document.activeElement);
+    var activeSensorInput = getContainingSensorInput(document.activeElement),
+        nInputs = sensorInputs.length;
     for (var i = 0; i < sensorInputs.length; i++) {
         if (sensorInputs[i] == activeSensorInput) {
             break;
         }
     }
-    sensorInputs[(i + direction) % sensorInputs.length].select();
+    sensorInputs[(((i + direction) % nInputs) + nInputs) % nInputs].select();
 }
 
 for (var row = 0; row < numpadRows; row++) {
@@ -187,12 +196,14 @@ for (var row = 0; row < numpadRows; row++) {
         var value = numpadKeys[row][column],
             formFocusedFunction = null,
             noFormFocusedFunction = null;
+
+        // TODO: possibly refactor by initializing each button with a constructor alone? (no more switch)
         switch (value) {
             case " ":
                 formFocusedFunction = function() {
                 }
                 break;
-            case "🗎⇨":
+            case numpadIcons.prevForm:
                 formFocusedFunction = function() {
                     cycleSensorInputs(1);
                 }
@@ -200,7 +211,7 @@ for (var row = 0; row < numpadRows; row++) {
                     sensorInputs[0].select();
                 }
                 break;
-            case "⇦🗎":
+            case numpadIcons.nextForm:
                 formFocusedFunction = function() {
                     cycleSensorInputs(-1);
                 }
@@ -208,7 +219,7 @@ for (var row = 0; row < numpadRows; row++) {
                     sensorInputs[sensorInputs.length - 1].select();
                 }
                 break;
-            case "⏎":
+            case numpadIcons.submitActive:
                 formFocusedFunction = function() {
                     var sensorInput = getContainingSensorInput(document.activeElement);
                     if (sensorInput !== undefined) {
@@ -216,12 +227,20 @@ for (var row = 0; row < numpadRows; row++) {
                     }
                 }
                 break;
-            case "⌧":
+            case numpadIcons.submitLocation:
+                formFocusedFunction = function() {
+                    document.getElementById("location-form").submit();
+                }
+                noFormFocusedFunction = function() {
+                    document.getElementById("location-form").submit();
+                }
+                break;
+            case numpadIcons.clear:
                 formFocusedFunction = function() {
                     document.activeElement.value = "";
                 }
                 break;
-            case "⌫":
+            case numpadIcons.delLeft:
                 formFocusedFunction = function() {
                     document.activeElement.value = document.activeElement.value.slice(0, -1);
                 }
