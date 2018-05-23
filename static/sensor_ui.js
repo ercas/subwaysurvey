@@ -133,7 +133,7 @@ var numpadContainer = document.getElementById("numpad-container"),
         [4, 5, 6],
         [1, 2, 3],
         [" ", 0, " "],
-        ["<", ".", ">"],
+        ["<form", ".", "form>"],
         ["back", "clear", "enter"]
     ],
     numpadRows = 6, // just to make programming easier
@@ -142,25 +142,31 @@ var numpadContainer = document.getElementById("numpad-container"),
 numpadTable.setAttribute("id", "numpad-table");
 numpadContainer.appendChild(numpadTable);
 
-function NumpadButton(buttonText, callback = null) {
+function NumpadButton(buttonText, formFocusedFunction = null, noFormFocusedFunction = null) {
     this.button = document.createElement("td");
     var thisButton = this.button;
-    this.button.innerHTML = buttonText;
+    this.button.textContent = buttonText;
     thisButton.onclick = function() {
         thisButton.setAttribute("style", "background-color: #6a6a6a;");
         window.setTimeout(function() {
             thisButton.removeAttribute("style");
         }, 100);
 
-        // default behaviour is to simulate typing button text
+        // default behaviour if a field is selected is to simulate typing button text
         if (document.activeElement.tagName == "INPUT") {
-            if (callback == null) {
+            if (formFocusedFunction == null) {
                 document.activeElement.value = document.activeElement.value + buttonText;
             } else {
-                callback();
+                formFocusedFunction();
             }
+
+        // default behaviour if a field is selected is nothing
         } else {
-            console.log("no input selected");
+            if (noFormFocusedFunction == null) {
+                console.log("no input selected");
+            } else {
+                noFormFocusedFunction();
+            }
         }
     }
 }
@@ -179,22 +185,29 @@ for (var row = 0; row < numpadRows; row++) {
     var newRow = document.createElement("tr");
     for (var column = 0; column < numpadColumns; column++) {
         var value = numpadKeys[row][column],
-            buttonFunction = null;
+            formFocusedFunction = null,
+            noFormFocusedFunction = null;
         switch (value) {
             case " ":
                 break;
-            case ">":
-                buttonFunction = function() {
+            case "form>":
+                formFocusedFunction = function() {
                     cycleSensorInputs(1);
                 }
+                noFormFocusedFunction = function() {
+                    sensorInputs[0].select();
+                }
                 break;
-            case "<":
-                buttonFunction = function() {
+            case "<form":
+                formFocusedFunction = function() {
                     cycleSensorInputs(-1);
+                }
+                noFormFocusedFunction = function() {
+                    sensorInputs[sensorInputs.length - 1].select();
                 }
                 break;
             case "enter":
-                buttonFunction = function() {
+                formFocusedFunction = function() {
                     var sensorInput = getContainingSensorInput(document.activeElement);
                     if (sensorInput !== undefined) {
                         sensorInput.submit();
@@ -202,19 +215,19 @@ for (var row = 0; row < numpadRows; row++) {
                 }
                 break;
             case "clear":
-                buttonFunction = function() {
+                formFocusedFunction = function() {
                     document.activeElement.value = "";
                 }
                 break;
             case "back":
-                buttonFunction = function() {
+                formFocusedFunction = function() {
                     document.activeElement.value = document.activeElement.value.slice(0, -1);
                 }
                 break;
             default:
                 break;
         }
-        newRow.appendChild(new NumpadButton(value, buttonFunction).button);
+        newRow.appendChild(new NumpadButton(value, formFocusedFunction, noFormFocusedFunction).button);
     }
     numpadTable.appendChild(newRow);
 }
