@@ -19,12 +19,17 @@ function SensorInput(sensorName) {
         "notes": null
     }
     var thisObject = this,
-        thisForm = this.form;
+        thisForm = this.form,
+        thisValueField = null;
 
     this.submit = function() {
         thisForm.submit();
         thisForm.reset();
         thisObject.inputs["value"].select();
+    }
+
+    this.select = function() {
+        thisValueField.select();
     }
 
     setAttributes(this.form, {
@@ -63,6 +68,8 @@ function SensorInput(sensorName) {
         if (inputName == "sensor") {
             //input.setAttribute("readonly", null);
             input.setAttribute("value", sensorName);
+        } else if (inputName == "value") {
+            thisValueField = input;
         }
 
         row.appendChild(nameCell);
@@ -94,12 +101,11 @@ var sensorInputs = [
     new SensorInput("dylos")
 ];
 
-function submitContainingForm(input) {
+function getContainingSensorInput(input) {
     for (var i = 0; i < sensorInputs.length; i++) {
         if (sensorInputs[i].form.contains(input)) {
             console.log(sensorInputs[i]);
-            sensorInputs[i].submit();
-            return;
+            return sensorInputs[i];
         }
     }
     console.log("not a sensor form");
@@ -111,7 +117,7 @@ document.addEventListener("keydown", function(e) {
     switch (key) {
         case "Enter":
             if (target.tagName == "INPUT") {
-                submitContainingForm(target);
+                submitContainingSensorInput(target);
             }
             break;
         default:
@@ -126,89 +132,89 @@ var numpadContainer = document.getElementById("numpad-container"),
         [7, 8, 9],
         [4, 5, 6],
         [1, 2, 3],
+        [" ", 0, " "],
         ["<", ".", ">"],
         ["back", "clear", "enter"]
     ],
-    numpadRows = 5, // just to make programming easier
+    numpadRows = 6, // just to make programming easier
     numpadColumns = 3;
 
 numpadTable.setAttribute("id", "numpad-table");
 numpadContainer.appendChild(numpadTable);
 
-function flashButton(button) {
-    button.setAttribute("style", "background-color: #6a6a6a;");
-    window.setTimeout(function() {
-        button.removeAttribute("style");
-    }, 100);
+function NumpadButton(buttonText, callback = null) {
+    this.button = document.createElement("td");
+    var thisButton = this.button;
+    this.button.innerHTML = buttonText;
+    thisButton.onclick = function() {
+        thisButton.setAttribute("style", "background-color: #6a6a6a;");
+        window.setTimeout(function() {
+            thisButton.removeAttribute("style");
+        }, 100);
+
+        // default behaviour is to simulate typing button text
+        if (document.activeElement.tagName == "INPUT") {
+            if (callback == null) {
+                document.activeElement.value = document.activeElement.value + buttonText;
+            } else {
+                callback();
+            }
+        } else {
+            console.log("no input selected");
+        }
+    }
+}
+
+function cycleSensorInputs(direction) {
+    var activeSensorInput = getContainingSensorInput(document.activeElement);
+    for (var i = 0; i < sensorInputs.length; i++) {
+        if (sensorInputs[i] == activeSensorInput) {
+            break;
+        }
+    }
+    sensorInputs[(i + direction) % sensorInputs.length].select();
 }
 
 for (var row = 0; row < numpadRows; row++) {
     var newRow = document.createElement("tr");
     for (var column = 0; column < numpadColumns; column++) {
-        var button = document.createElement("td"),
-            value = numpadKeys[row][column];
-        button.innerHTML = value;
-
-        // refactor this in a less redundant way later
+        var value = numpadKeys[row][column],
+            buttonFunction = null;
         switch (value) {
             case " ":
                 break;
             case ">":
-                // TODO: next input
+                buttonFunction = function() {
+                    cycleSensorInputs(1);
+                }
                 break;
             case "<":
-                // TODO: previous input
+                buttonFunction = function() {
+                    cycleSensorInputs(-1);
+                }
                 break;
             case "enter":
-                (function(button) {
-                    button.onclick = function() {
-                        flashButton(button);
-                        if (document.activeElement.tagName == "INPUT") {
-                            submitContainingForm(document.activeElement);
-                        } else {
-                            console.log("no input selected");
-                        }
+                buttonFunction = function() {
+                    var sensorInput = getContainingSensorInput(document.activeElement);
+                    if (sensorInput !== undefined) {
+                        sensorInput.submit();
                     }
-                })(button);
+                }
                 break;
             case "clear":
-                (function(button) {
-                    button.onclick = function() {
-                        flashButton(button);
-                        if (document.activeElement.tagName == "INPUT") {
-                            document.activeElement.value = "";
-                        } else {
-                            console.log("no input selected");
-                        }
-                    }
-                })(button);
+                buttonFunction = function() {
+                    document.activeElement.value = "";
+                }
                 break;
             case "back":
-                (function(button) {
-                    button.onclick = function() {
-                        flashButton(button);
-                        if (document.activeElement.tagName == "INPUT") {
-                            document.activeElement.value = document.activeElement.value.slice(0, -1);
-                        } else {
-                            console.log("no input selected");
-                        }
-                    }
-                })(button);
+                buttonFunction = function() {
+                    document.activeElement.value = document.activeElement.value.slice(0, -1);
+                }
                 break;
             default:
-                (function(button, value) {
-                    button.onclick = function() {
-                        flashButton(button);
-                        if (document.activeElement.tagName == "INPUT") {
-                            document.activeElement.value = document.activeElement.value + value;
-                        } else {
-                            console.log("no input selected");
-                        }
-                    }
-                })(button, value);
                 break;
         }
-            newRow.appendChild(button);
+        newRow.appendChild(new NumpadButton(value, buttonFunction).button);
     }
     numpadTable.appendChild(newRow);
 }
