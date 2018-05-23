@@ -132,9 +132,9 @@ var numpadContainer = document.getElementById("numpad-container"),
         [7, 8, 9],
         [4, 5, 6],
         [1, 2, 3],
-        [" ", 0, " "],
-        ["<form", ".", "form>"],
-        ["back", "clear", "enter"]
+        [" ", 0, "📍⏎"],
+        ["⇦🗎", ".", "🗎⇨"],
+        ["⌫", "⌧", "⏎"]
     ],
     numpadRows = 6, // just to make programming easier
     numpadColumns = 3;
@@ -189,8 +189,10 @@ for (var row = 0; row < numpadRows; row++) {
             noFormFocusedFunction = null;
         switch (value) {
             case " ":
+                formFocusedFunction = function() {
+                }
                 break;
-            case "form>":
+            case "🗎⇨":
                 formFocusedFunction = function() {
                     cycleSensorInputs(1);
                 }
@@ -198,7 +200,7 @@ for (var row = 0; row < numpadRows; row++) {
                     sensorInputs[0].select();
                 }
                 break;
-            case "<form":
+            case "⇦🗎":
                 formFocusedFunction = function() {
                     cycleSensorInputs(-1);
                 }
@@ -206,7 +208,7 @@ for (var row = 0; row < numpadRows; row++) {
                     sensorInputs[sensorInputs.length - 1].select();
                 }
                 break;
-            case "enter":
+            case "⏎":
                 formFocusedFunction = function() {
                     var sensorInput = getContainingSensorInput(document.activeElement);
                     if (sensorInput !== undefined) {
@@ -214,12 +216,12 @@ for (var row = 0; row < numpadRows; row++) {
                     }
                 }
                 break;
-            case "clear":
+            case "⌧":
                 formFocusedFunction = function() {
                     document.activeElement.value = "";
                 }
                 break;
-            case "back":
+            case "⌫":
                 formFocusedFunction = function() {
                     document.activeElement.value = document.activeElement.value.slice(0, -1);
                 }
