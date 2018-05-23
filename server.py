@@ -12,7 +12,7 @@ app = flask.Flask(__name__)
 
 @app.route("/", methods = ["GET"])
 def index():
-    with open("./index.html", "r") as f:
+    with open("./index.html", "r", encoding = "utf-8") as f:
         return f.read()
 
 @app.route("/update_location", methods = ["POST"])
