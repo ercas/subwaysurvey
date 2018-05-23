@@ -29,11 +29,13 @@ function Selector(containingTable, options, defaultOption = 1, label_index_adjus
         }
     }
 
-    this.cycle = function() {
+    this.cycle = function(direction = 1) {
         for (var i = 0; i < this.options.length; i++) {
             if (this.options[i] == this.activeOption) {
-                this.selectOption(this.options[(i + 1) % this.options.length]);
-                break;
+                var nOptions = this.options.length,
+                    newIndex = (((i + direction) % nOptions) + nOptions) % nOptions;
+                this.selectOption(this.options[newIndex]);
+                return newIndex;
             }
         }
     }
@@ -123,15 +125,36 @@ function findTableCoordinates() {
     }
 }
 
-function stationTableNav(xDirection, yDirection) {
+function stationTableNav(xDirection, yDirection, focus = true) {
     var coords = findTableCoordinates();
-    console.log(coords);
     var newButton = stationButtonsTable[coords[0] + yDirection][coords[1] + xDirection];
-    console.log(coords[0] + yDirection);
+    // TODO: jump rows if rows share the same colour (e.g. green symphony -> green copley)
     if (newButton !== undefined) {
         newButton.click();
-        newButton.scrollIntoView();
+        if (focus) {
+            newButton.scrollIntoView();
+        }
     }
+}
+
+function cycleStation(direction = 1) {
+    if (statusSelector.cycle() == 0) {
+        if (direction == 1) {
+            stationTableNav(1, 0, false);
+        } else {
+            stationTableNav(-1, 0, false);
+        }
+    }
+}
+
+document.getElementById("next-state").onclick = function() {
+    cycleStation(1);
+}
+document.getElementById("prev-state").onclick = function() {
+    cycleStation(-1);
+}
+document.getElementById("selector-submit").onclick = function() {
+    document.getElementById("location-form").submit();
 }
 
 document.addEventListener("keydown", function(e) {

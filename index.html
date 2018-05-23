@@ -12,7 +12,7 @@
             </tr>
             <tr id=sensor-input-forms>
                 <td>
-                    <form action=update_location target=response-frame method=post enctype=multipart/form-data>
+                    <form id=location-form action=update_location target=response-frame method=post enctype=multipart/form-data>
                         <table>
                             <tr>
                                 <td>
@@ -59,14 +59,25 @@
         </table>
 
         <br>
-        <table id=status-selector class=selector>
+        <table style="table-layout: fixed; width: 100%;">
+            <tr>
+                <td style="width: 66%;">
+                    <table id=status-selector class=selector></table>
+                    <br>
+                    <table id=position-selector class=selector></table>
+                </td>
+                <td class=large-button id=prev-state>
+                    prev state
+                </td>
+                <td class=large-button id=next-state>
+                    next state
+                </td>
+                <td class=large-button id=selector-submit>
+                    submit
+                </td>
+            </tr>
         </table>
 
-        <br>
-        <table id=position-selector class=selector>
-        </table>
-
-        <br>
         <table style="table-layout: fixed; width: 100%;">
             <tr>
 
@@ -193,7 +204,6 @@
                                 <td></td>
                                 <td></td>
                                 <td></td>
-                                <td></td>
                                 <td>heath street</td>
                                 <td>back of the hill</td>
                                 <td>riverway</td>
@@ -204,6 +214,7 @@
                                 <td>museum of fine arts</td>
                                 <td>northeastern</td>
                                 <td>symphony</td>
+                                <td>prudential</td>
                                 <td></td>
                                 <td></td>
                                 <td></td>
