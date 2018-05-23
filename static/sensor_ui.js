@@ -247,7 +247,7 @@ for (var row = 0; row < numpadRows; row++) {
 document.addEventListener("mousedown", function(e) {
     var key = e.key,
         target = e.target;
-    if (numpadContainer.contains(e.target)) {
+    if (numpadContainer.contains(e.target) || e.target.getAttribute("class") == "large-button") {
         e.preventDefault();
     }
 });
