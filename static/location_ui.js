@@ -149,9 +149,11 @@ function cycleStation(direction = 1) {
 
 document.getElementById("next-state").onclick = function() {
     cycleStation(1);
+	updateForms();
 }
 document.getElementById("prev-state").onclick = function() {
     cycleStation(-1);
+	updateForms();
 }
 document.getElementById("selector-submit").onclick = function() {
     document.getElementById("location-form").submit();
