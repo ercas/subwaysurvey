@@ -129,7 +129,6 @@ document.addEventListener("keydown", function(e) {
 var numpadContainer = document.getElementById("numpad-container"),
     numpadTable = document.createElement("table"),
     numpadIcons = {
-        submitLocation: "📍⏎",
         prevForm: "⇦🗎",
         nextForm: "🗎⇨",
         delLeft: "⌫",
@@ -140,7 +139,7 @@ var numpadContainer = document.getElementById("numpad-container"),
         [7, 8, 9],
         [4, 5, 6],
         [1, 2, 3],
-        [" ", 0, numpadIcons.submitLocation],
+        [" ", 0, " "],
         [numpadIcons.prevForm, ".", numpadIcons.nextForm],
         [numpadIcons.delLeft, numpadIcons.clear, numpadIcons.submitActive]
     ],
@@ -225,14 +224,6 @@ for (var row = 0; row < numpadRows; row++) {
                     if (sensorInput !== undefined) {
                         sensorInput.submit();
                     }
-                }
-                break;
-            case numpadIcons.submitLocation:
-                formFocusedFunction = function() {
-                    document.getElementById("location-form").submit();
-                }
-                noFormFocusedFunction = function() {
-                    document.getElementById("location-form").submit();
                 }
                 break;
             case numpadIcons.clear:
