@@ -256,13 +256,13 @@ class TStationDB(DB):
         )
 
 
-    def record_location(self, location_name, status_name, timestamp = None):
+    def record_location(self, location_name, position_name, status_name, timestamp = None):
         """ Record a timestamped observation to the database
 
         :param str location_name: The name of the location
         :param str status_name: The status of the location (entering,
             leaving, stopped, etc)
-        :param str status_name: The position at the location (subway car,
+        :param str position_name: The position at the location (subway car,
             platform center, etc)
         :param float timestamp: The time that the observation was taken; defaults
             to the current system time
@@ -277,8 +277,9 @@ class TStationDB(DB):
                 VALUES (?, ?, ?, ?)
             """,
             (
-                timestamp, self.resolve_id("location_ids", location_name),
-                self.resolve_id("position_ids", status_name),
+                timestamp,
+                self.resolve_id("location_ids", location_name),
+                self.resolve_id("position_ids", position_name),
                 self.resolve_id("status_ids", status_name)
             )
         )

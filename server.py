@@ -11,7 +11,7 @@ PORT = 8889
 app = flask.Flask(__name__)
 
 def sanity_check_pretty_print(reason, old_value_str, new_value_str):
-    print("%s: \"%s\" -> \"%s\"")
+    print("%s: \"%s\" -> \"%s\"" % (reason, old_value_str, new_value_str))
 
 def sanity_check(sensor_name, value_str):
     """ Perform sanity checks after auto corrections if possible """
