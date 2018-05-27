@@ -91,9 +91,12 @@ if (__name__ == "__main__"):
         ("dylos generic", "62.3", 6203)
     ]
     for test in tests:
-        print("\n== test %s: %s -> %s" % (test[0], test[1], test[2]))
+        print("\n== test input from sensor \033[4m%s\033[0m" % (test[0]))
+        print("== input: %s" % test[1])
+        print("== expected: %s" % test[2])
         result = sanity_check(test[0], test[1])
+        print("== result: %s" % result)
         if (result == test[2]):
-            print("\033[92mPASSED\033[0m")
+            print("== \033[92mPASSED\033[0m")
         else:
-            print("\033[91mFAILED\033[0m (%s)" % result)
+            print("== \033[91mFAILED\033[0m")
