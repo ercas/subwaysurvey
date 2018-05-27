@@ -1,57 +1,17 @@
 #!/usr/bin/env python3
+# flask web server that serves web app front end and connects to database back
+# end
 
 import flask
 import os
 import webbrowser
 
 from db import TStationDB
+from sanity_check import sanity_check
 
 PORT = 8889
 
 app = flask.Flask(__name__)
-
-def sanity_check_pretty_print(reason, old_value_str, new_value_str):
-    print("%s: \"%s\" -> \"%s\"" % (reason, old_value_str, new_value_str))
-
-def sanity_check(sensor_name, value_str):
-    """ Perform sanity checks after auto corrections if possible """
-    value_float = float(value_str)
-
-    if (sensor_name == "3m sd200 slm"):
-
-        # stated range of 3m sd-200 slm is 40 to 130 dB
-        if (value_float > 130):
-            first_zero_loc = value_str.find("0")
-
-            if (not "." in value_str):
-                # possibility: user entered "0" instead of a decimal point
-                if (first_zero_loc != -1):
-                    new_value_str = value_str[:first_zero_loc] + "." + value_str[(first_zero_loc + 1):]
-                    sanity_check_pretty_print(
-                        "converted \"0\" -> \".\"",
-                        value_str,
-                        new_value_str
-                    )
-                    return sanity_check(sensor_name, new_value_str)
-
-                # possibility: user did not enter decimal point. the 3m sd-200
-                # slm has one decimal point so we add the decimal point between
-                # the last and second to last characters
-                else:
-                    new_value_str = value_str[:-1] + "." + value_str[-1]
-                    sanity_check_pretty_print(
-                        "inserted decimal point",
-                        value_str,
-                        new_value_str
-                    )
-                    return sanity_check(sensor_name, new_value_str)
-            else:
-                return False
-
-        elif (value_float < 40):
-            return False
-
-    return value_float
 
 @app.route("/", methods = ["GET"])
 def index():
