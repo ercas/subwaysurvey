@@ -101,6 +101,17 @@ var sensorInputs = [
     new SensorInput("dylos")
 ];
 
+function cycleSensorInputs(direction) {
+    var activeSensorInput = getContainingSensorInput(document.activeElement),
+        nInputs = sensorInputs.length;
+    for (var i = 0; i < sensorInputs.length; i++) {
+        if (sensorInputs[i] == activeSensorInput) {
+            break;
+        }
+    }
+    sensorInputs[(((i + direction) % nInputs) + nInputs) % nInputs].select();
+}
+
 function getContainingSensorInput(input) {
     for (var i = 0; i < sensorInputs.length; i++) {
         if (sensorInputs[i].form.contains(input)) {
@@ -146,29 +157,6 @@ function timerLoop() {
 timerLoop();
 
 // NUMPAD INITIALIZATION
-var numpadContainer = document.getElementById("numpad-container"),
-    numpadTable = document.createElement("table"),
-    numpadIcons = {
-        prevForm: "⇦🗎",
-        nextForm: "🗎⇨",
-        delLeft: "⌫",
-        clear: "⌧",
-        submitActive: "⏎",
-        resetTimer: "⏱",
-    },
-    numpadKeys = [
-        [7, 8, 9],
-        [4, 5, 6],
-        [1, 2, 3],
-        [" ", 0, numpadIcons.resetTimer],
-        [numpadIcons.prevForm, ".", numpadIcons.nextForm],
-        [numpadIcons.delLeft, numpadIcons.clear, numpadIcons.submitActive]
-    ],
-    numpadRows = 6, // just to make programming easier
-    numpadColumns = 3;
-
-numpadTable.setAttribute("id", "numpad-table");
-numpadContainer.appendChild(numpadTable);
 
 function NumpadButton(buttonText, formFocusedFunction = null, noFormFocusedFunction = null) {
     this.button = document.createElement("td");
@@ -180,7 +168,7 @@ function NumpadButton(buttonText, formFocusedFunction = null, noFormFocusedFunct
             thisButton.removeAttribute("style");
         }, 100);
 
-        // default behaviour if a field is selected is to simulate typing button text and reset the timer
+        // default behaviour if a field is selected is to simulate typing button text
         if (document.activeElement.tagName == "INPUT") {
             if (formFocusedFunction == null) {
                 document.activeElement.value = document.activeElement.value + buttonText;
@@ -188,7 +176,7 @@ function NumpadButton(buttonText, formFocusedFunction = null, noFormFocusedFunct
                 formFocusedFunction();
             }
 
-        // default behaviour if a field is selected is nothing
+        // default behaviour if no field is selected is to do nothing
         } else {
             if (noFormFocusedFunction == null) {
                 console.log("no input selected");
@@ -199,72 +187,64 @@ function NumpadButton(buttonText, formFocusedFunction = null, noFormFocusedFunct
     }
 }
 
-function cycleSensorInputs(direction) {
-    var activeSensorInput = getContainingSensorInput(document.activeElement),
-        nInputs = sensorInputs.length;
-    for (var i = 0; i < sensorInputs.length; i++) {
-        if (sensorInputs[i] == activeSensorInput) {
-            break;
+var numpadBlank = new NumpadButton(""),
+    numpadResetTimer = new NumpadButton("⏱", resetTimer, resetTimer),
+    numpadPrevForm = new NumpadButton(
+        "⇦🗎",
+        function() { cycleSensorInputs(1); },
+        function() { sensorInputs[0].select(); }
+    ),
+    numpadNextForm = new NumpadButton(
+        "🗎⇨",
+        function() { cycleSensorInputs(1); },
+        function() { sensorInputs[sensorInputs.length - 1].select(); }
+    ),
+    numpadDelLeft = new NumpadButton(
+        "⌫",
+        function() { document.activeElement.value = document.activeElement.value.slice(0, -1); }
+    ),
+    numpadClear = new NumpadButton(
+        "⌧",
+        function() { document.activeElement.value = ""; }
+    ),
+    numpadSubmitActive = new NumpadButton(
+        "⏎⏱",
+        function() {
+            var sensorInput = getContainingSensorInput(document.activeElement);
+            if (sensorInput !== undefined) {
+                sensorInput.submit();
+            }
+            resetTimer();
         }
-    }
-    sensorInputs[(((i + direction) % nInputs) + nInputs) % nInputs].select();
-}
+    )
+
+var numpadContainer = document.getElementById("numpad-container"),
+    numpadTable = document.createElement("table"),
+    numpadKeys = [
+        [7, 8, 9],
+        [4, 5, 6],
+        [1, 2, 3],
+        [numpadBlank, 0, numpadResetTimer],
+        [numpadPrevForm, ".", numpadNextForm],
+        [numpadDelLeft, numpadClear, numpadSubmitActive]
+    ],
+    numpadRows = 6, // just to make programming easier
+    numpadColumns = 3;
+
+numpadTable.setAttribute("id", "numpad-table");
+numpadContainer.appendChild(numpadTable);
 
 for (var row = 0; row < numpadRows; row++) {
     var newRow = document.createElement("tr");
     for (var column = 0; column < numpadColumns; column++) {
         var value = numpadKeys[row][column],
-            formFocusedFunction = null,
-            noFormFocusedFunction = null;
-
-        // TODO: possibly refactor by initializing each button with a constructor alone? (no more switch)
-        switch (value) {
-            case " ":
-                formFocusedFunction = function() {
-                }
-                break;
-            case numpadIcons.prevForm:
-                formFocusedFunction = function() {
-                    cycleSensorInputs(1);
-                }
-                noFormFocusedFunction = function() {
-                    sensorInputs[0].select();
-                }
-                break;
-            case numpadIcons.nextForm:
-                formFocusedFunction = function() {
-                    cycleSensorInputs(-1);
-                }
-                noFormFocusedFunction = function() {
-                    sensorInputs[sensorInputs.length - 1].select();
-                }
-                break;
-            case numpadIcons.submitActive:
-                formFocusedFunction = function() {
-                    var sensorInput = getContainingSensorInput(document.activeElement);
-                    if (sensorInput !== undefined) {
-                        sensorInput.submit();
-                    }
-                }
-                break;
-            case numpadIcons.clear:
-                formFocusedFunction = function() {
-                    document.activeElement.value = "";
-                }
-                break;
-            case numpadIcons.delLeft:
-                formFocusedFunction = function() {
-                    document.activeElement.value = document.activeElement.value.slice(0, -1);
-                }
-                break;
-            case numpadIcons.resetTimer:
-                formFocusedFunction = resetTimer;
-                noFormFocusedFunction = resetTimer;
-                break;
-            default:
-                break;
+            numpadButton = null;
+        if (value.constructor.name == "NumpadButton") {
+            numpadButton = value;
+        } else {
+            numpadButton = new NumpadButton(value);
         }
-        newRow.appendChild(new NumpadButton(value, formFocusedFunction, noFormFocusedFunction).button);
+        newRow.appendChild(numpadButton.button)
     }
     numpadTable.appendChild(newRow);
 }
