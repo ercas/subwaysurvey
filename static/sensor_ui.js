@@ -125,6 +125,26 @@ document.addEventListener("keydown", function(e) {
     }
 });
 
+
+// NUMPAD TIMER
+var timer = document.getElementById("numpad-timer"),
+    time = 0,
+    resolutionMs = 100,
+    resolutionS = resolutionMs / 1000,
+    nDecimals = 2;
+
+function resetTimer() {
+    time = 0;
+}
+
+function timerLoop() {
+    time += resolutionS;
+    timer.textContent = time.toFixed(nDecimals);
+    window.setTimeout(timerLoop, resolutionMs);
+}
+
+timerLoop();
+
 // NUMPAD INITIALIZATION
 var numpadContainer = document.getElementById("numpad-container"),
     numpadTable = document.createElement("table"),
@@ -133,13 +153,14 @@ var numpadContainer = document.getElementById("numpad-container"),
         nextForm: "🗎⇨",
         delLeft: "⌫",
         clear: "⌧",
-        submitActive: "⏎"
+        submitActive: "⏎",
+        resetTimer: "⏱",
     },
     numpadKeys = [
         [7, 8, 9],
         [4, 5, 6],
         [1, 2, 3],
-        [" ", 0, " "],
+        [" ", 0, numpadIcons.resetTimer],
         [numpadIcons.prevForm, ".", numpadIcons.nextForm],
         [numpadIcons.delLeft, numpadIcons.clear, numpadIcons.submitActive]
     ],
@@ -159,7 +180,7 @@ function NumpadButton(buttonText, formFocusedFunction = null, noFormFocusedFunct
             thisButton.removeAttribute("style");
         }, 100);
 
-        // default behaviour if a field is selected is to simulate typing button text
+        // default behaviour if a field is selected is to simulate typing button text and reset the timer
         if (document.activeElement.tagName == "INPUT") {
             if (formFocusedFunction == null) {
                 document.activeElement.value = document.activeElement.value + buttonText;
@@ -235,6 +256,10 @@ for (var row = 0; row < numpadRows; row++) {
                 formFocusedFunction = function() {
                     document.activeElement.value = document.activeElement.value.slice(0, -1);
                 }
+                break;
+            case numpadIcons.resetTimer:
+                formFocusedFunction = resetTimer;
+                noFormFocusedFunction = resetTimer;
                 break;
             default:
                 break;
