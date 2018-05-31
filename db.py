@@ -21,7 +21,6 @@ class DB(object):
         :param str path: The path that the database will be stored at
         :param int auto_commit_interval: The number of inserts after which a
             database commit will be forced
-        :return: A boolean signifying if the database has been set up
         """
 
         self.db_path = path
@@ -245,12 +244,13 @@ class TStationDB(DB):
 
         self._exec(
             """
-                INSERT INTO observations(timestamp, source_id, location_id, status_id, value, notes)
-                VALUES (?, ?, ?, ?, ?, ?)
+                INSERT INTO observations(timestamp, source_id, location_id, position_id, status_id, value, notes)
+                VALUES (?, ?, ?, ?, ?, ?, ?)
             """,
             (
                 timestamp, self.resolve_id("source_ids", source_name),
                 self.resolve_id("location_ids", location_name),
+                self.resolve_id("position_ids", location_name),
                 self.resolve_id("status_ids", status_name),
                 value, notes
             )
@@ -296,7 +296,7 @@ class TStationDB(DB):
 
         self.cursor.execute(
             """
-                SELECT location_ids.name, status_ids.name
+                SELECT location_ids.name, position_ids.name, status_ids.name
                 FROM location_history
                 INNER JOIN location_ids
                     ON location_ids.id = location_history.location_id
