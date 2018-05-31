@@ -42,7 +42,7 @@ class CsvImporter(object):
 
         self.timestamp_column = timestamp_column
 
-    def import_csv(self, csv_path):
+    def import_csv(self, csv_path, append_location_data = False):
         """ Import a CSV file using the defined data column -> sensor label map
 
         :param str csv_path: The path to the CSV File
@@ -58,7 +58,10 @@ class CsvImporter(object):
                     timestamp = dateutil.parser.parse(timestamp).timestamp()
                 try:
                     for (data_column, table) in self.column_table_map:
-                        table.record(row[data_column], timestamp = timestamp)
+                        table.record(
+                            row[data_column], timestamp = timestamp,
+                            append_location_data = append_location_data
+                        )
                 except TypeError:
                     print("no data exists for timestamp %s" % timestamp)
         self.db.commit()

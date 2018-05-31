@@ -182,7 +182,13 @@ class Sensor(object):
             CREATE TABLE IF NOT EXISTS data_%s(
                 timestamp FLOAT NOT NULL,
                 value FLOAT NOT NULL,
-                notes VARCHAR
+                notes VARCHAR,
+                location_id INTEGER,
+                position_id INTEGER,
+                status_id INTEGER,
+                FOREIGN KEY(location_id) REFERENCES id_location(id),
+                FOREIGN KEY(position_id) REFERENCES id_position(id),
+                FOREIGN KEY(status_id) REFERENCES id_status(id)
             )
         """ % self.sensor_name)
         self.db.connection.commit()
@@ -192,20 +198,34 @@ class Sensor(object):
     def __exit__(self, type, value, traceback):
         self.db.connection.commit()
 
-    def record(self, value, notes = None, timestamp = None):
+    def record(self, value, notes = None, timestamp = None, append_location_data = False):
         if (timestamp is None):
             timestamp = time.time()
 
-        self.db.cursor.execute(
-            """
-                INSERT INTO data_%s(timestamp, value, notes)
-                VALUES (?, ?, ?)
-            """ % self.sensor_name,
-            (timestamp, value, notes)
-        )
+        if (append_location_data):
+            try:
+                (location, position, status) = self.db.timestamp_to_location_status(timestamp)
+                self.db.cursor.execute(
+                    """
+                        INSERT INTO data_%s(timestamp, value, notes, location_id, position_id, status_id)
+                        VALUES (?, ?, ?)
+                    """ % self.sensor_name,
+                    (timestamp, value, notes, location, position, status)
+                )
+            except TypeError:
+                print("no data exists for timestamp %s" % timestamp)
+        else:
+            self.db.cursor.execute(
+                """
+                    INSERT INTO data_%s(timestamp, value, notes)
+                    VALUES (?, ?, ?)
+                """ % self.sensor_name,
+                (timestamp, value, notes)
+            )
         self.db._check_auto_commit()
 
 if (__name__ == "__main__"):
     with DB() as db:
         with db.Sensor("dylos") as dylos:
-            dlos.record(1)
+            dylos.record(1)
+            dylos.update_location_data()
