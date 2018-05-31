@@ -2,15 +2,31 @@
 # flask web server that serves web app front end and connects to database back
 # end
 
+import csv
 import flask
 import os
+import time
 import webbrowser
 
-from db import TStationDB
 from sanity_check import sanity_check
 
 PORT = 8889
 
+start_time = time.time()
+paths = {
+    key: "./data/%s-%d.csv" % (key, start_time)
+    for key in ["locations", "observations"]
+}
+csv_writers = {
+    key: csv.writer(open(paths[key], "w", 1))
+    for key in paths
+}
+csv_writers["locations"].writerow(["TIMESTAMP", "LOCATION", "POSITION", "STATUS"])
+csv_writers["observations"].writerow(["TIMESTAMP", "SENSOR", "VALUE", "NOTES"])
+for (key, path) in paths.items():
+    print("writing %s to %s" % (key, path))
+
+print("")
 app = flask.Flask(__name__)
 
 @app.route("/", methods = ["GET"])
@@ -23,18 +39,15 @@ def update_location():
     form = flask.request.form
     if (form):
         location = (
-            form.get("location_name"), form.get("position_name"), form.get("status")
+            time.time(), form.get("location_name"), form.get("position_name"), form.get("status")
         )
 
-        for field in location:
+        for field in location[1:]:
             if (len(field) == 0):
                 return flask.jsonify({"error": "blank field in input"})
 
+        csv_writers["locations"].writerow(location)
         print(location)
-
-        with TStationDB() as db:
-            db.record_location(*location)
-
         return flask.jsonify({
             "received": {
                 "location": location
@@ -53,15 +66,14 @@ def new_observation():
 
         if (len(sensor) == 0):
             return flask.jsonify({"error": "blank sensor"})
-
         elif (len(raw_value) == 0):
             return flask.jsonify({"error": "blank value"})
-
         else:
             notes = form.get("notes")
             if (len(notes) == 0):
                 notes = None
 
+            # sanity checking and auto correction
             try:
                 sane_value = sanity_check(sensor, raw_value)
             except Exception as err:
@@ -71,11 +83,9 @@ def new_observation():
                 })
 
             if (sane_value):
-                print(sensor, raw_value, sane_value, notes)
-
-                with TStationDB() as db:
-                    db.record(sensor, sane_value, notes = notes)
-
+                row = [time.time(), sensor, sane_value, notes]
+                csv_writers["observations"].writerow(row)
+                print(row)
                 return flask.jsonify({
                     "received": {
                         "sensor": sensor,
