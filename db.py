@@ -47,7 +47,7 @@ class DB(object):
 
         print("intializing new database")
 
-        for id_table in ["id_sensor", "id_location", "id_position", "id_status"]:
+        for id_table in ["id_location", "id_position", "id_status"]:
             self.cursor.execute("""
                 CREATE TABLE IF NOT EXISTS %s(
                     id INTEGER PRIMARY KEY,
