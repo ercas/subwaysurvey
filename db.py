@@ -179,7 +179,7 @@ class Sensor(object):
         self.sensor_name = sensor_name
 
         self.db.cursor.execute("""
-            CREATE TABLE IF NOT EXISTS sensor_%s(
+            CREATE TABLE IF NOT EXISTS data_%s(
                 timestamp FLOAT NOT NULL,
                 value FLOAT NOT NULL,
                 notes VARCHAR
@@ -198,7 +198,7 @@ class Sensor(object):
 
         self.db.cursor.execute(
             """
-                INSERT INTO sensor_%s(timestamp, value, notes)
+                INSERT INTO data_%s(timestamp, value, notes)
                 VALUES (?, ?, ?)
             """ % self.sensor_name,
             (timestamp, value, notes)
