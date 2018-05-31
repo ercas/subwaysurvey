@@ -8,7 +8,7 @@ import time
 
 MAX_EXEC_RETRIES = 10
 FAILED_EXEC_LOG = "failed_exec.txt"
-DEFAULT_DB_PATH = "observations.db"
+DEFAULT_DB_PATH = "data.db"
 AUTO_COMMIT_INTERVAL = 1000
 LOCATION_SOURCE_ID = "location"
 
@@ -37,28 +37,36 @@ class DB(object):
         if (self.setup):
             self._setup()
 
+    def __enter__(self):
+        return self
+    def __exit__(self, type, value, traceback):
+        self.connection.commit()
+
     def _setup(self):
         """ Initialize new database, assuming it doesn't exist yet """
 
         print("intializing new database")
-        for id_table in ["source_ids", "location_ids"]:
+
+        for id_table in ["id_sensor", "id_location", "id_position", "id_status"]:
             self.cursor.execute("""
-                CREATE TABLE %s(
+                CREATE TABLE IF NOT EXISTS %s(
                     id INTEGER PRIMARY KEY,
                     name VARCHAR UNIQUE
                 )
             """ % id_table)
+
         self.cursor.execute("""
-            CREATE TABLE observations(
-                timestamp FLOAT,
-                source_id INTEGER,
-                location_id INTEGER,
-                value FLOAT,
-                notes VARCHAR,
-                FOREIGN KEY(source_id) REFERENCES source_ids(id),
-                FOREIGN KEY(location_id) REFERENCES location_ids(id)
+            CREATE TABLE IF NOT EXISTS location_history(
+                timestamp FLOAT NOT NULL,
+                location_id INTEGER NOT NULL,
+                position_id INTEGER NOT NULL,
+                status_id INTEGER NOT NULL,
+                FOREIGN KEY(location_id) REFERENCES id_location(id),
+                FOREIGN KEY(position_id) REFERENCES id_position(id),
+                FOREIGN KEY(status_id) REFERENCES id_status(id)
             )
         """)
+
         self.connection.commit()
 
     def _check_auto_commit(self):
@@ -134,33 +142,6 @@ class DB(object):
                 self.id_cache[table][name] = id_
                 return id_
 
-    def record(self, source_name, value, location_name = None,
-               timestamp = None, notes = None):
-        """ Record a timestamped observation to the database
-
-        :param str source_name: The name of the source
-        :param float value: The value of the observation
-        :param str location_name: The name of the location
-        :param float timestamp: The time that the observation was taken; defaults
-            to the current system time
-        :param str notes: Additional notes to accompany the observation, if any
-        """
-
-        if (timestamp is None):
-            timestamp = time.time()
-
-        self._exec(
-            """
-                INSERT INTO observations(timestamp, source_id, location_id, value, notes)
-                VALUES (?, ?, ?, ?, ?)
-            """,
-            (
-                timestamp, self.resolve_id("source_ids", source_name),
-                self.resolve_id("location_ids", location_name),
-                value, notes
-            )
-        )
-
     def commit(self):
         """ Wrapper for SQLite3 connection commit that resets the
         _check_auto_commit counter """
@@ -168,182 +149,63 @@ class DB(object):
         self.i = 0
         self.connection.commit()
 
+    def import_timestamps(self, timestamp_file):
+        with open(timestamp_file, "r") as f:
+            reader = csv.DictReader(f)
+            for row in reader:
+                self.cursor.execute(
+                    """
+                        INSERT INTO location_history(
+                            timestamp, location_id, position_id, status_id
+                        )
+                        VALUES (?, ?, ?, ?)
+                    """,
+                    (
+                        row["TIMESTAMP"],
+                        self.resolve_id("id_location", row["LOCATION"]),
+                        self.resolve_id("id_position", row["POSITION"]),
+                        self.resolve_id("id_status", row["STATUS"])
+                    )
+                )
+            self.connection.commit()
+
+    def Sensor(self, sensor_name):
+        return Sensor(self, sensor_name)
+
+class Sensor(object):
+
+    def __init__(self, db, sensor_name):
+        self.db = db
+        self.sensor_name = sensor_name
+
+        self.db.cursor.execute("""
+            CREATE TABLE IF NOT EXISTS sensor_%s(
+                timestamp FLOAT NOT NULL,
+                value FLOAT NOT NULL,
+                notes VARCHAR
+            )
+        """ % self.sensor_name)
+        self.db.connection.commit()
+
     def __enter__(self):
         return self
     def __exit__(self, type, value, traceback):
-        self.connection.commit()
+        self.db.connection.commit()
 
-class TStationDB(DB):
-
-    def __init__(self, *args, **kwargs):
-        """ Initialize database that extends the DB class with functionality
-        for recording MBTA stations """
-
-        DB.__init__(self, *args, **kwargs)
-
-        if (self.setup):
-            print("initializing location history tables")
-            for id_table in ["position_ids", "status_ids"]:
-                self.cursor.execute("""
-                    CREATE TABLE %s(
-                        id INTEGER PRIMARY KEY,
-                        name VARCHAR UNIQUE
-                    )
-                """ % id_table)
-            self.cursor.execute("""
-                CREATE TABLE location_history(
-                    timestamp FLOAT NOT NULL,
-                    location_id INTEGER NOT NULL,
-                    position_id INTEGER NOT NULL,
-                    status_id INTEGER NOT NULL,
-                    FOREIGN KEY(location_id) REFERENCES location_ids(id),
-                    FOREIGN KEY(position_id) REFERENCES position_ids(id),
-                    FOREIGN KEY(status_id) REFERENCES status_ids(id)
-                )
-            """)
-
-            # modify the observations table so that it has an additional
-            # status_id column
-            self.cursor.execute("DROP TABLE observations")
-            self.cursor.execute("""
-                CREATE TABLE observations(
-                    timestamp FLOAT,
-                    source_id INTEGER NOT NULL,
-                    location_id INTEGER,
-                    position_id INTEGER,
-                    status_id INTEGER,
-                    value FLOAT NOT NULL,
-                    notes VARCHAR,
-                    FOREIGN KEY(source_id) REFERENCES source_ids(id),
-                    FOREIGN KEY(location_id) REFERENCES location_ids(id),
-                    FOREIGN KEY(position_id) REFERENCES position_ids(id),
-                    FOREIGN KEY(status_id) REFERENCES status_ids(id)
-                )
-            """)
-            self.connection.commit()
-
-    # overwrite the record function with additional location_status arg
-    def record(self, source_name, value, location_name = None,
-               position_name = None, status_name = None, timestamp = None,
-               notes = None):
-        """ Record a timestamped observation to the database
-
-        :param str source_name: The name of the source
-        :param float value: The value of the observation
-        :param str location_name: The name of the location
-        :param str position_name: The name of the position
-        :param str status_name: The status of the location (entering,
-            leaving, stopped, etc)
-        :param float timestamp: The time that the observation was taken; defaults
-            to the current system time
-        :param str notes: Additional notes to accompany the observation, if any
-        """
-
+    def record(self, value, notes = None, timestamp = None):
         if (timestamp is None):
             timestamp = time.time()
 
-        self._exec(
+        self.db.cursor.execute(
             """
-                INSERT INTO observations(timestamp, source_id, location_id, position_id, status_id, value, notes)
-                VALUES (?, ?, ?, ?, ?, ?, ?)
-            """,
-            (
-                timestamp, self.resolve_id("source_ids", source_name),
-                self.resolve_id("location_ids", location_name),
-                self.resolve_id("position_ids", location_name),
-                self.resolve_id("status_ids", status_name),
-                value, notes
-            )
+                INSERT INTO sensor_%s(timestamp, value, notes)
+                VALUES (?, ?, ?)
+            """ % self.sensor_name,
+            (timestamp, value, notes)
         )
-
-
-    def record_location(self, location_name, position_name, status_name, timestamp = None):
-        """ Record a timestamped observation to the database
-
-        :param str location_name: The name of the location
-        :param str status_name: The status of the location (entering,
-            leaving, stopped, etc)
-        :param str position_name: The position at the location (subway car,
-            platform center, etc)
-        :param float timestamp: The time that the observation was taken; defaults
-            to the current system time
-        """
-
-        if (timestamp is None):
-            timestamp = time.time()
-
-        self._exec(
-            """
-                INSERT INTO location_history(timestamp, location_id, position_id, status_id)
-                VALUES (?, ?, ?, ?)
-            """,
-            (
-                timestamp,
-                self.resolve_id("location_ids", location_name),
-                self.resolve_id("position_ids", position_name),
-                self.resolve_id("status_ids", status_name)
-            )
-        )
-
-    def timestamp_to_location_status(self, timestamp):
-        """ Get the location and status that was occurring at a particular time
-
-        :param float timestamp: The timestamp to query
-        :return: A tuple of the location id and status id, or None if there is
-            no prior location history
-        :rtype: tuple or None
-        """
-
-        self.cursor.execute(
-            """
-                SELECT location_ids.name, position_ids.name, status_ids.name
-                FROM location_history
-                INNER JOIN location_ids
-                    ON location_ids.id = location_history.location_id
-                INNER JOIN position_ids
-                    ON position_ids.id = location_history.position_id
-                INNER JOIN status_ids
-                    ON status_ids.id = location_history.status_id
-                WHERE location_history.timestamp < ?
-                ORDER BY location_history.rowid DESC
-                LIMIT 1
-            """,
-            (timestamp,)
-        )
-        try:
-            return self.cursor.fetchone()
-        except TypeError:
-            return None
-
-    def observations_to_csv(self, output_file):
-        """ Join tables and write observations to csv files
-
-        :param str output_file: The file to write data to
-        """
-        with open(output_file, "w") as f:
-            writer = csv.writer(f)
-            writer.writerow(["timestamp", "source", "location", "position", "status", "value", "notes"])
-            self.cursor.execute(
-                """
-                    SELECT observations.timestamp, source_ids.name, location_ids.name, position_ids.name, status_ids.name, observations.value, observations.notes
-                    FROM observations
-                    INNER JOIN source_ids
-                        ON source_ids.id = observations.source_id
-                    INNER JOIN location_ids
-                        ON location_ids.id = observations.location_id
-                    INNER JOIN position_ids
-                        ON position_ids.id = location_history.position_id
-                    INNER JOIN status_ids
-                        ON status_ids.id = observations.status_id
-                """
-            )
-            for row in self.cursor:
-                writer.writerow(row)
-        print("wrote to %s" % output_file)
+        self.db._check_auto_commit()
 
 if (__name__ == "__main__"):
-    with TStationDB() as db:
-        db.record("dylos", 1)
-        db.record("dylos", 2)
-        db.record("dylos", 3)
-        db.record("dylos", 4)
+    with DB() as db:
+        with db.Sensor("dylos") as dylos:
+            dlos.record(1)

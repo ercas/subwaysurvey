@@ -11,6 +11,10 @@ import webbrowser
 from sanity_check import sanity_check
 
 PORT = 8889
+DATA_DIR = "./data/"
+
+if (not os.path.isdir(DATA_DIR)):
+    os.makedirs(DATA_DIR)
 
 start_time = time.time()
 paths = {
