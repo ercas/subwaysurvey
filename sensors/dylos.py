@@ -34,7 +34,7 @@ with open(OUTPUT, "w") as f:
     if (stream):
         while True:
             try:
-                line = "%d,%s" % (
+                line = "%f,%s" % (
                     time.time(), dylos.readline().rstrip().decode()
                 )
                 f.write("%s\n" % line)
