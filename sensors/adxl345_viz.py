@@ -20,6 +20,7 @@ adxl345 = serial.Serial(
 )
 
 with open(OUTPUT, "w") as f:
+    f.write("TIME,X,Y,Z\n")
     while True:
         try:
             line = adxl345.readline().rstrip().decode()
