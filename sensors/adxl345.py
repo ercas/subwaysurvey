@@ -6,10 +6,11 @@ import serial
 import sys
 import time
 
-OUTPUT = "adxl345_%d.csv" % time.time()
 THRESH = 20
 GRAPH_WIDTH = 70
 
+start_time = time.time()
+output = "adxl345_%d.csv" % start_time
 device_file = sys.argv[1]
 adxl345 = serial.Serial(
     device_file,
@@ -19,7 +20,7 @@ adxl345 = serial.Serial(
     xonxoff = False
 )
 
-with open(OUTPUT, "w") as f:
+with open(output, "w") as f:
     f.write("TIME,X,Y,Z\n")
     while True:
         try:
@@ -28,7 +29,9 @@ with open(OUTPUT, "w") as f:
                 pass
             else:
                 (timestamp, x, y, z) = line.split(",")
-                f.write("%s\n" % line)
+                f.write("%f,%s,%s,%s\n" % (
+                    start_time + float(timestamp), x, y, z
+                ))
 
                 (x_float, y_float, z_float) = map(
                     lambda n: abs(float(n)),
@@ -38,22 +41,21 @@ with open(OUTPUT, "w") as f:
                     lambda n: int(n / THRESH * GRAPH_WIDTH) - 1,
                     (x_float, y_float, z_float)
                 )
-                print(
-                    colorama.Fore.RED
-                    + ("% 6.2f | " % x_float)
-                    + ("█" * x_width)
-                )
-                print(
-                    colorama.Fore.GREEN
-                    + ("% 6.2f | " % y_float)
-                    + ("█" * y_width)
-                )
-                print(
-                    colorama.Fore.BLUE
-                    + ("% 6.2f | " % z_float)
-                    + ("█" * z_width)
-                )
-                #print(line)
+
+                # faster than multiple prints and concatenations
+                sys.stdout.write(colorama.Fore.RED)
+                sys.stdout.write("% 6.2f | " % x_float)
+                sys.stdout.write("█" * x_width)
+                sys.stdout.write("\n")
+                sys.stdout.write(colorama.Fore.GREEN)
+                sys.stdout.write("% 6.2f | " % y_float)
+                sys.stdout.write("█" * y_width)
+                sys.stdout.write("\n")
+                sys.stdout.write(colorama.Fore.BLUE)
+                sys.stdout.write("% 6.2f | " % z_float)
+                sys.stdout.write("█" * z_width)
+                sys.stdout.write("\n")
+                sys.stdout.flush()
         except KeyboardInterrupt:
             break
         except UnicodeDecodeError:
