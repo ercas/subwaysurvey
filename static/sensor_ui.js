@@ -140,7 +140,7 @@ document.addEventListener("keydown", function(e) {
 // NUMPAD TIMER
 var timer = document.getElementById("numpad-timer"),
     time = 0,
-    resolutionMs = 100,
+    resolutionMs = 1000,
     resolutionS = resolutionMs / 1000,
     nDecimals = 2;
 
