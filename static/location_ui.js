@@ -65,7 +65,7 @@ var statusSelector = new Selector(
 );
 var positionSelector = new Selector(
     document.getElementById("position-selector"),
-    ["subway car", "platform center", "platform entrance", "platform exit"],
+    ["subway car", "platform center", "platform entrance", "platform exit", "START", "END"],
     0,
     5
 );
@@ -167,7 +167,10 @@ document.addEventListener("keydown", function(e) {
     if (target == document.body) {
         var i = parseInt(key);
         if (Number.isInteger(i)) {
-            if (i <= statusSelector.options.length) {
+            if (i == 0) {
+                positionSelector.selectOption(positionSelector.options[positionSelector.options.length - 1]);
+                updateForms();
+            } else if (i <= statusSelector.options.length) {
                 statusSelector.selectOption(statusSelector.options[i - 1]);
                 updateForms();
             } else if (i <= positionSelector.options.length + 4) {
