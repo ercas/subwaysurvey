@@ -30,7 +30,7 @@ with open(output, "w") as f:
             else:
                 (timestamp, x, y, z) = line.split(",")
                 f.write("%f,%s,%s,%s\n" % (
-                    start_time + float(timestamp), x, y, z
+                    start_time + float(timestamp)/1000, x, y, z
                 ))
 
                 (x_float, y_float, z_float) = map(
