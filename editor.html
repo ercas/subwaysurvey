@@ -1,0 +1,106 @@
+<html>
+    <head>
+        <meta charset=utf-8>
+        <script src=https://d3js.org/d3.v5.min.js></script>
+    </head>
+    <body>
+        <div id=graph></div>
+        <script>
+
+var spaceBetweenGraphs = 20,
+    tickWidth = 20,
+    nTimeTicks = 20,
+    adxlSkip = 20;
+
+function AdxlGraph(data, xScale = null, width = 1200, graphHeight = 100) {
+
+    var axes = {
+            "X": "red",
+            "Y": "blue",
+            "Z": "green"
+        },
+        height = graphHeight * 3 + spaceBetweenGraphs * 4;
+
+    var canvas = d3.select("#graph")
+        .append("svg")
+        .attr("width", width)
+        .attr("height", height + tickWidth);
+
+    if (xScale == null) {
+        xScale = d3.scaleTime()
+            .domain(
+                d3.extent(data, function(row) { return row["TIME"]; })
+            )
+            .range([0, width]);
+    }
+
+    nGraph = 0
+    for (var axis in axes) {
+        nGraph++;
+        var yOffset = (nGraph - 1) * (graphHeight + spaceBetweenGraphs) + tickWidth;
+
+        var subGraph = canvas.append("g")
+            .attr("height", graphHeight)
+            .attr("transform", "translate(" + tickWidth + "," + yOffset + ")")
+
+        var yScale = d3.scaleLinear()
+            .domain(
+                d3.extent(data, function(row) { return row[axis]; })
+            )
+            .range([graphHeight, 0]);
+
+        subGraph.append("path")
+            .data([data])
+            .attr("class", "line")
+            .style("fill", "none")
+            .attr("stroke", axes[axis])
+            .attr(
+                "d",
+                d3.line()
+                    .x(function(row) { return xScale(row["TIME"]); })
+                    .y(function(row) { return yScale(row[axis]); })
+            );
+
+        subGraph.append("g")
+            .call(
+                d3.axisLeft(yScale)
+            );
+
+    }
+
+    canvas.append("g")
+        .attr("transform", "translate(" + tickWidth + "," + height + ")")
+        .call(
+            d3.axisBottom(xScale)
+                .ticks(nTimeTicks)
+        );
+
+    canvas.on("mousemove", function() {
+        var mouseX = d3.event.pageX;
+        console.log(mouseX, xScale.invert(mouseX));
+    });
+
+}
+
+d3.csv("data/2018-06-24/adxl").then(function(data) {
+
+    // downsampling for the graph
+    var newData = [];
+    for (var i = 0; i < data.length; i++) {
+        if (i % adxlSkip == 0) {
+            var row = data[i];
+            row["TIME"] = new Date(+row["TIME"] * 1000);
+            row["X"] = +row["X"];
+            row["Y"] = +row["Y"];
+            row["Z"] = +row["Z"];
+            newData.push(row);
+        }
+    };
+
+    AdxlGraph(newData);
+});
+
+//AdxlGraph(joinCsvSegments(adxlSegments));
+        </script>
+    </body>
+</html>
