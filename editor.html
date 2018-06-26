@@ -2,102 +2,211 @@
     <head>
         <meta charset=utf-8>
         <script src=https://d3js.org/d3.v5.min.js></script>
+        <style>
+.overlay {
+    fill: none;
+    pointer-events: all;
+}
+        </style>
     </head>
     <body>
         <div id=graph></div>
         <script>
 
 var spaceBetweenGraphs = 20,
-    tickWidth = 20,
+    tickWidth = 30,
     nTimeTicks = 20,
-    adxlSkip = 20;
+    nAccelTicks = 8,
+    adxlSkip = 20,
+    pageMargin = 10,
+    adxlZoomWindow = 1.5,
+    axes = {
+        "X": "red",
+        "Y": "blue",
+        "Z": "green"
+    };
 
-function AdxlGraph(data, xScale = null, width = 1200, graphHeight = 100) {
+function AdxlSubgraph(parentGraph, axis, subgraphHeight, yOffset) {
+    var thisObject = this;
 
-    var axes = {
-            "X": "red",
-            "Y": "blue",
-            "Z": "green"
-        },
-        height = graphHeight * 3 + spaceBetweenGraphs * 4;
+    this.axis = axis;
+    this.zoomed = false;
+    this.subgraphCanvas = parentGraph.canvas.append("g")
+        .attr("height", subgraphHeight)
+        .attr("transform", "translate(" + tickWidth + "," + yOffset + ")")
 
-    var canvas = d3.select("#graph")
-        .append("svg")
-        .attr("width", width)
-        .attr("height", height + tickWidth);
+    this.yScale = d3.scaleLinear()
+        .domain(
+            d3.extent(parentGraph.data, function(row) { return row[axis]; })
+        )
+        .range([subgraphHeight, 0]);
 
-    if (xScale == null) {
-        xScale = d3.scaleTime()
-            .domain(
-                d3.extent(data, function(row) { return row["TIME"]; })
-            )
-            .range([0, width]);
-    }
+    this.subgraphCanvas.append("rect")
+        .attr("class", "overlay")
+        .attr("width", parentGraph.width - tickWidth)
+        .attr("height", subgraphHeight);
 
-    nGraph = 0
-    for (var axis in axes) {
-        nGraph++;
-        var yOffset = (nGraph - 1) * (graphHeight + spaceBetweenGraphs) + tickWidth;
+    var clipId = "clip-" + axis;
+    this.subgraphCanvas.append("clipPath")
+        .attr("id", clipId)
+        .append("rect")
+        .attr("width", parentGraph.width - tickWidth)
+        .attr("height", subgraphHeight);
 
-        var subGraph = canvas.append("g")
-            .attr("height", graphHeight)
-            .attr("transform", "translate(" + tickWidth + "," + yOffset + ")")
+    this.subgraphCanvas.append("path")
+        .data([parentGraph.data])
+        .attr("clip-path", "url(#" + clipId + ")")
+        .attr("class", "line")
+        .style("fill", "none")
+        .attr("stroke", axes[axis]);
 
-        var yScale = d3.scaleLinear()
-            .domain(
-                d3.extent(data, function(row) { return row[axis]; })
-            )
-            .range([graphHeight, 0]);
+    this.subgraphCanvas.append("g")
+        .attr("class", "y-axis")
 
-        subGraph.append("path")
-            .data([data])
-            .attr("class", "line")
-            .style("fill", "none")
-            .attr("stroke", axes[axis])
+    this.scaleData = function(scale) {
+        this.subgraphCanvas.select(".line")
             .attr(
                 "d",
                 d3.line()
-                    .x(function(row) { return xScale(row["TIME"]); })
-                    .y(function(row) { return yScale(row[axis]); })
+                    .x(function(row) { return parentGraph.xScale(row["TIME"]); })
+                    .y(function(row) { return scale(row[axis]); })
             );
-
-        subGraph.append("g")
+        this.subgraphCanvas.select(".y-axis")
             .call(
-                d3.axisLeft(yScale)
+                d3.axisLeft(scale)
+                    .ticks(nAccelTicks)
             );
-
     }
 
-    canvas.append("g")
-        .attr("transform", "translate(" + tickWidth + "," + height + ")")
+    this.subgraphCanvas.on("contextmenu", function() {
+        console.log(thisObject.axis)
+        d3.event.preventDefault();
+        var mouseY = d3.event.pageY - yOffset - pageMargin,
+            graphY = thisObject.yScale.invert(mouseY);
+        console.log(axis, mouseY, graphY, this, thisObject)
+
+        thisObject.zoomed = !thisObject.zoomed;
+        if (thisObject.zoomed) {
+            thisObject.scaleData(
+                d3.scaleLinear()
+                    .domain([graphY - adxlZoomWindow, graphY + adxlZoomWindow])
+                    .range([subgraphHeight, 0])
+            );
+        } else {
+            thisObject.scaleData(thisObject.yScale);
+        }
+    });
+
+    thisObject.scaleData(thisObject.yScale);
+}
+
+function AdxlGraph(data, xScale = null, width = 5000, subgraphHeight = 100) {
+    var thisObject = this;
+    var subgraphs = [];
+    this.data = data;
+    this.height = subgraphHeight * 3 + spaceBetweenGraphs * 4;
+    this.width = width;
+
+    if (xScale == null) {
+        this.xScale = d3.scaleTime()
+            .domain(
+                d3.extent(data, function(row) { return row["TIME"]; })
+            )
+            .range([0, this.width]);
+    } else {
+        this.xScale = xScale;
+    }
+
+    this.canvas = d3.select("#graph")
+        .append("svg")
+        .attr("width", this.width)
+        .attr("height", this.height + tickWidth);
+
+    var nGraph = 0
+    for (var axis in axes) {
+        (function(axis) {
+            nGraph++;
+            var yOffset = (nGraph - 1) * (subgraphHeight + spaceBetweenGraphs) + tickWidth;
+            subgraphs.push(new AdxlSubgraph(thisObject, axis, subgraphHeight, yOffset));
+        })(axis);
+    }
+
+    var verticalLine = this.canvas.append("line")
+        .attr("class", "vertical-line")
+        .attr("x1", 0)
+        .attr("y1", 0)
+        .attr("x2", 0)
+        .attr("y1", this.height)
+        .style("stroke", "black")
+        .style("stroke-width", 1)
+        .style("stroke-dasharray", ("3, 3"));
+
+
+    this.canvas.append("g")
+        .attr("transform", "translate(" + tickWidth + "," + this.height + ")")
         .call(
-            d3.axisBottom(xScale)
+            d3.axisBottom(this.xScale)
                 .ticks(nTimeTicks)
         );
 
-    canvas.on("mousemove", function() {
-        var mouseX = d3.event.pageX;
-        console.log(mouseX, xScale.invert(mouseX));
+    this.moveToMouseX = function(mouseX) {
+        var pageX = mouseX - pageMargin;
+        console.log(mouseX, this.xScale.invert(mouseX));
+        verticalLine
+            .attr("x1", pageX)
+            .attr("x2", pageX);
+    }
+
+    this.canvas.on("mousemove", function() {
+        thisObject.moveToMouseX(d3.event.pageX);
     });
 
 }
 
+function avgRow(rows) {
+    var columns = Object.keys(rows[0]),
+        n = rows.length,
+        avg = {};
+
+    for (var i in columns) {
+        avg[columns[i]] = 0;
+    }
+    rows.forEach(function(row) {
+        for (var i in columns) {
+            var column = columns[i];
+            avg[column] += row[column];
+        }
+    });
+    for (var i in columns) {
+        avg[columns[i]] /= n;
+    }
+
+    return avg
+}
+
 d3.csv("data/2018-06-24/adxl").then(function(data) {
 
-    // downsampling for the graph
-    var newData = [];
+    var downsampledData = [],
+        accum = [];
+
     for (var i = 0; i < data.length; i++) {
-        if (i % adxlSkip == 0) {
-            var row = data[i];
-            row["TIME"] = new Date(+row["TIME"] * 1000);
-            row["X"] = +row["X"];
-            row["Y"] = +row["Y"];
-            row["Z"] = +row["Z"];
-            newData.push(row);
+        var row = data[i];
+        row["TIME"] = +row["TIME"] * 1000
+        row["X"] = +row["X"];
+        row["Y"] = +row["Y"];
+        row["Z"] = +row["Z"];
+
+        if (i % adxlSkip == 1) {
+            downsampledData.push(avgRow(accum));
+            accum = [];
+
+        } else {
+            accum.push(row);
         }
     };
 
-    AdxlGraph(newData);
+    new AdxlGraph(downsampledData);
+
 });
 
 //AdxlGraph(joinCsvSegments(adxlSegments));

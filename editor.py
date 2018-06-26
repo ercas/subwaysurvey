@@ -14,6 +14,10 @@ def index():
     with open("./editor.html", "r", encoding = "utf-8") as f:
         return f.read()
 
+@app.route("/data/")
+def showAvailableData():
+    return flask.jsonify(os.listdir(DATA_DIR))
+
 @app.route("/data/<day>/<sensor>")
 def fetchData(day, sensor):
     joined_rows = []
