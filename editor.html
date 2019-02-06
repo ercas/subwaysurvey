@@ -11,10 +11,17 @@
 .vetical-line {
     pointer-events: none;
 }
+
+.location-label {
+    font-family: sans-serif;
+    font-size: 12px;
+}
+
         </style>
     </head>
     <body>
         <div id=adxlGraph></div>
+        <div id=locationGraph></div>
         <script>
 
 var SPACE_BETWEEN_GRAPHS = 20,
@@ -25,6 +32,7 @@ var SPACE_BETWEEN_GRAPHS = 20,
     PAGE_MARGIN = 10,
     ADXL_ZOOM_WINDOW = 1.5,
     GRAPH_WIDTH = 10000,
+    TIME_BUFFER = 100000,
     AXES = {
         "X": "red",
         "Y": "blue",
@@ -32,6 +40,7 @@ var SPACE_BETWEEN_GRAPHS = 20,
     };
 
 var adxlGraph;
+var locationGraph;
 
 function avgRow(rows) {
     var columns = Object.keys(rows[0]),
@@ -127,7 +136,7 @@ function AdxlSubgraph(parentGraph, axis, subgraphHeight, yOffset) {
     thisObject.scaleData(thisObject.yScale);
 }
 
-function AdxlGraph(data, xScale = null, idSelector = "#adxlGraph", width = GRAPH_WIDTH, subgraphHeight = 100) {
+function AdxlGraph(data, xScale = null, idSelector = "#adxlGraph", width = GRAPH_WIDTH, subgraphHeight = 80, otherVerticalLines = []) {
     var thisObject = this;
     var subgraphs = [];
     this.data = data;
@@ -158,16 +167,21 @@ function AdxlGraph(data, xScale = null, idSelector = "#adxlGraph", width = GRAPH
         })(axis);
     }
 
-    var verticalLine = this.canvas.append("line")
-        .attr("class", "vertical-line")
-        .attr("x1", 0)
-        .attr("y1", 0)
-        .attr("x2", 0)
-        .attr("y1", this.height)
-        .style("stroke", "black")
-        .style("stroke-width", 1)
-        .style("stroke-dasharray", ("3, 3"));
-
+    this.verticalLines = [
+        this.canvas.append("line")
+            .attr("class", "vertical-line")
+            .attr("x1", 0)
+            .attr("y1", 0)
+            .attr("x2", 0)
+            .attr("y1", this.height)
+            .style("stroke", "black")
+            .style("stroke-width", 1)
+            .style("stroke-dasharray", ("3, 3"))
+    ];
+    for (var i = 0; i < otherVerticalLines.length; i++) {
+        this.verticalLines.push(otherVerticalLines[i]);
+    }
+    var verticalLines = this.verticalLines;
 
     this.canvas.append("g")
         .attr("transform", "translate(" + TICK_WIDTH + "," + this.height + ")")
@@ -176,10 +190,12 @@ function AdxlGraph(data, xScale = null, idSelector = "#adxlGraph", width = GRAPH
                 .ticks(N_TIME_TICKS)
         );
 
-    this.moveVerticalLine = function(pageX) {
-        verticalLine
-            .attr("x1", pageX - PAGE_MARGIN + 1.5)
-            .attr("x2", pageX - PAGE_MARGIN + 1.5);
+    this.moveVerticalLines = function(pageX) {
+        for (var i = 0; i < verticalLines.length; i++) {
+            verticalLines[i]
+                .attr("x1", pageX - PAGE_MARGIN + 1.5)
+                .attr("x2", pageX - PAGE_MARGIN + 1.5);
+        }
     }
 
     this.pageXToTime = function(pageX) {
@@ -187,7 +203,7 @@ function AdxlGraph(data, xScale = null, idSelector = "#adxlGraph", width = GRAPH
     }
 
     this.canvas.on("mousemove", function() {
-        thisObject.moveVerticalLine(d3.event.pageX);
+        thisObject.moveVerticalLines(d3.event.pageX);
     });
 
     var dragSelection = this.canvas.append("rect")
@@ -226,7 +242,7 @@ function AdxlGraph(data, xScale = null, idSelector = "#adxlGraph", width = GRAPH
             .on("end", function() {
                 var pageX = d3.event.x;
                 dragSelection.style("opacity", 0);
-                thisObject.moveVerticalLine(pageX + PAGE_MARGIN);
+                thisObject.moveVerticalLines(pageX + PAGE_MARGIN);
 
                 pageX = thisObject.pageXToTime(pageX);
                 dragStartX = thisObject.pageXToTime(pageX);
@@ -242,8 +258,85 @@ function AdxlGraph(data, xScale = null, idSelector = "#adxlGraph", width = GRAPH
 
 }
 
+function LocationGraph(data, xScale = null, idSelector = "#locationGraph", width = GRAPH_WIDTH, subgraphHeight = 10000, barHeight = 14) {
+    var thisObject = this;
+    this.data = data;
+    this.height = subgraphHeight;
+    this.width = width;
 
+    if (xScale == null) {
+        this.xScale = d3.scaleTime()
+            .domain(
+                d3.extent(data, function(row) { return row["TIME"]; })
+            )
+            .range([0, this.width]);
+    } else {
+        this.xScale = xScale;
+    }
 
+    this.canvas = d3.select(idSelector)
+        .append("svg")
+        .attr("width", this.width)
+        .attr("height", this.height + TICK_WIDTH);
+
+    this.verticalLine = this.canvas.append("line")
+        .attr("class", "vertical-line")
+        .attr("x1", 0)
+        .attr("y1", 0)
+        .attr("x2", 0)
+        .attr("y1", this.height)
+        .style("stroke", "black")
+        .style("stroke-width", 1)
+        .style("stroke-dasharray", ("3, 3"));
+
+    for (i = 0; i < data.length - 1; i++) {
+        var row = data[i],
+            nextRow = data[i + 1],
+            timestamp_start = row["TIMESTAMP"],
+            timestamp_end = nextRow["TIMESTAMP"],
+            drawStart = thisObject.xScale(timestamp_start) + PAGE_MARGIN,
+            drawEnd = thisObject.xScale(timestamp_end) + PAGE_MARGIN,
+            drawWidth = drawEnd - drawStart;
+
+        var fillColour = "grey";
+        switch(row["STATUS"]) {
+            case "leaving":
+                fillColour = "green";
+                break;
+            case "entering":
+                fillColour = "red";
+                break;
+            case "left":
+                fillColour = "blue";
+                break;
+        }
+        if ((row["POSITION"] == "START") || (row["POSITION"] == "END")) {
+            fillColour = "black";
+        }
+
+        var box = thisObject.canvas.append("rect")
+            .attr("x", drawStart)
+            .attr("y", barHeight * i)
+            .attr("height", barHeight)
+            .attr("width", drawWidth)
+            .attr("fill", fillColour);
+
+        var label = thisObject.canvas.append("text")
+            .attr("class", "location-label")
+            .attr("x", drawEnd + 1)
+            .attr("y", barHeight * (i + 0.75))
+            .text(row["LOCATION"])
+
+        if (nextRow["LOCATION"] != row["LOCATION"]) {
+            var line = thisObject.canvas.append("rect")
+                .attr("x", drawEnd)
+                .attr("y", 0)
+                .attr("height", thisObject.height)
+                .attr("width", 1);
+        }
+
+    }
+}
 
 var sampleDate = "2018-06-24";
 var globalXScale;
@@ -255,9 +348,11 @@ d3.csv("data/" + sampleDate + "/location").then(function(data) {
 
     globalXScale = d3.scaleTime()
         .domain(
-            d3.extent(data, function(row) { return row["TIMESTAMP"]; })
+            d3.extent(data, function(row) { return row["TIMESTAMP"] + TIME_BUFFER; })
         )
         .range([0, GRAPH_WIDTH]);
+
+    locationGraph = new LocationGraph(data, globalXScale);
 });
 
 d3.csv("data/" + sampleDate + "/adxl").then(function(data) {
@@ -282,7 +377,15 @@ d3.csv("data/" + sampleDate + "/adxl").then(function(data) {
         }
     };
 
-    adxlGraph = new AdxlGraph(downsampledData, globalXScale);
+    /*
+    adxlGraph = new AdxlGraph(downsampledData, globalXScale, {
+        otherVerticalLines: [locationGraph.verticalLine]
+    });
+    */
+
+    adxlGraph = new AdxlGraph(downsampledData, globalXScale,
+        "#adxlGraph", GRAPH_WIDTH, 80,
+        [locationGraph.verticalLine]);
 
 });
 
