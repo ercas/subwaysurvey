@@ -3,6 +3,7 @@
 import csv
 import flask
 import glob
+import os
 
 PORT = 8889
 DATA_DIR = "./data/"
@@ -18,6 +19,11 @@ def index():
 def showAvailableData():
     return flask.jsonify(os.listdir(DATA_DIR))
 
+@app.route("/data/<day>/")
+def showAvailableSesors(day):
+    return flask.jsonify(os.listdir("%s/%s" % (DATA_DIR, day)))
+
+
 @app.route("/data/<day>/<sensor>")
 def fetchData(day, sensor):
     joined_rows = []
@@ -28,7 +34,9 @@ def fetchData(day, sensor):
             if (not first):
                 _ = f.readline()
             first = False
-            joined_rows += f.readlines()
+            for line in f:
+                if (len(line.rstrip()) > 0):
+                    joined_rows.append(line)
     return "".join(joined_rows)
 
 if (__name__ == "__main__"):
