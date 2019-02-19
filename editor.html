@@ -3,6 +3,10 @@
         <meta charset=utf-8>
         <script src=static/contrib/d3.v5.min.js></script>
         <style>
+html, body {
+    margin: 0;
+    padding: 0;
+}
 .overlay {
     fill: none;
     pointer-events: all;
@@ -17,11 +21,108 @@
     font-size: 12px;
 }
 
+.key-item {
+    color: white;
+    padding: 4px;
+    text-align: center;
+}
+
+button, .selection {
+    cursor: pointer;
+}
+
+#caption {
+    font-size: 18px;
+}
+#export {
+    display: inline-block;
+}
+
+#dialogConfirm, #dialogDelete {
+    width: 100%;
+}
+#dialog {
+    height: 150px;
+    width: 270px;
+    background: white;
+    position: absolute;
+    top: 0; left: 0; bottom: 0; right: 0;
+    margin: auto;
+}
+#dialogTable {
+    width: 100%;
+    height: 100%;
+}
+
+#selectionGraphContainer {
+    overflow-x: scroll;
+    width: 100%;
+}
+#adxlGraphContainer {
+    overflow-x: scroll;
+    width: 100%;
+}
+#locationGraphContainer {
+    overflow-y: scroll;
+    height: 150px;
+    padding-left: -1000px;
+}
+
         </style>
     </head>
     <body>
-        <div id=adxlGraph></div>
-        <div id=locationGraph></div>
+        <div id=dialog hidden>
+            <table id=dialogTable>
+                <tr>
+                    <td>Start</td>
+                    <td><input id=dialogStart type=text disabled></input></td>
+                </tr>
+                <tr>
+                    <td>End
+                    <td><input id=dialogEnd type=text disabled></input></td>
+                </tr>
+                <tr>
+                    <td>Location</td>
+                    <td><input id=dialogLocation type=text></input></td>
+                </tr>
+                <tr>
+                    <td>Status</td>
+                    <td><input id=dialogStatus type=text></input></td>
+                </tr>
+                <tr>
+                    <td><button id=dialogDelete>delete</button></td>
+                    <td><button id=dialogConfirm>ok</button></td>
+                </tr>
+            </table>
+        </div>
+
+        <div id=adxlGraphContainer>
+            <div id=adxlGraph></div>
+        </div>
+        <div id=selectionGraphContainer>
+            <div id=selectionGraph></div>
+        </div>
+        <div id=locationGraphContainer>
+            <div id=locationGraph></div>
+        </div>
+
+        <div style="padding: 20px;">
+            <div style="width: 75%; float: left;">
+                <img src=static/neu.png></img>
+                <br>
+                <br><span id=caption>Environmental Sensors Lab - Subway Survey Data Labeler</span>
+            </div>
+            <div style="float: left;">
+                <a id=export href=#>export</a>
+                <a id=clear href=#>clear</a>
+                <br>
+                <br>
+                Key
+                <div style="background: green" class=key-item>Leaving</div>
+                <div style="background: red" class=key-item>Entering</div>
+                <div style="background: blue" class=key-item>Left</div>
+            </div>
+        </div>
         <script>
 
 var SPACE_BETWEEN_GRAPHS = 20,
@@ -29,9 +130,10 @@ var SPACE_BETWEEN_GRAPHS = 20,
     N_TIME_TICKS = 120,
     N_ACCEL_TICKS = 8,
     ADXL_SKIP = 20,
-    PAGE_MARGIN = 10,
+    //PAGE_MARGIN = 10,
+    PAGE_MARGIN = 0,
     ADXL_ZOOM_WINDOW = 1.5,
-    GRAPH_WIDTH = 10000,
+    GRAPH_WIDTH = 20000,
     TIME_BUFFER = 100000,
     AXES = {
         "X": "red",
@@ -39,8 +141,30 @@ var SPACE_BETWEEN_GRAPHS = 20,
         "Z": "green"
     };
 
+var scrollLeft = 0;
+
+var containers = [
+    "adxlGraphContainer",
+    "locationGraphContainer",
+    "selectionGraphContainer"
+]
+for (var i = 0; i < containers.length; i++) {
+    (function(container) {
+        container.addEventListener("scroll", function(e) {
+            scrollLeft = container.scrollLeft;
+            for (var j = 0; j < containers.length; j++) {
+                var otherContainer = document.getElementById(containers[j]);
+                if (otherContainer !== container) {
+                    otherContainer.scrollLeft = scrollLeft;
+                }
+            }
+        });
+    })(document.getElementById(containers[i]));
+}
+
 var adxlGraph;
 var locationGraph;
+var selectionGraph;
 
 function avgRow(rows) {
     var columns = Object.keys(rows[0]),
@@ -136,12 +260,14 @@ function AdxlSubgraph(parentGraph, axis, subgraphHeight, yOffset) {
     thisObject.scaleData(thisObject.yScale);
 }
 
-function AdxlGraph(data, xScale = null, idSelector = "#adxlGraph", width = GRAPH_WIDTH, subgraphHeight = 80, otherVerticalLines = []) {
+function AdxlGraph(data, xScale = null, idSelector = "#adxlGraph", width = GRAPH_WIDTH, subgraphHeight = 80, otherVerticalLines = [], selectionGraph = null) {
     var thisObject = this;
     var subgraphs = [];
+    var nGraphs = 3;
     this.data = data;
-    this.height = subgraphHeight * 3 + SPACE_BETWEEN_GRAPHS * 4;
+    this.height = subgraphHeight * nGraphs + SPACE_BETWEEN_GRAPHS * (nGraphs + 1);
     this.width = width;
+    this.selectionGraph = selectionGraph;
 
     if (xScale == null) {
         this.xScale = d3.scaleTime()
@@ -157,6 +283,8 @@ function AdxlGraph(data, xScale = null, idSelector = "#adxlGraph", width = GRAPH
         .append("svg")
         .attr("width", this.width)
         .attr("height", this.height + TICK_WIDTH);
+
+    this.bounds = this.canvas.node().getBoundingClientRect();
 
     var nGraph = 0
     for (var axis in AXES) {
@@ -203,7 +331,7 @@ function AdxlGraph(data, xScale = null, idSelector = "#adxlGraph", width = GRAPH
     }
 
     this.canvas.on("mousemove", function() {
-        thisObject.moveVerticalLines(d3.event.pageX);
+        thisObject.moveVerticalLines(d3.event.x + scrollLeft);
     });
 
     var dragSelection = this.canvas.append("rect")
@@ -244,15 +372,20 @@ function AdxlGraph(data, xScale = null, idSelector = "#adxlGraph", width = GRAPH
                 dragSelection.style("opacity", 0);
                 thisObject.moveVerticalLines(pageX + PAGE_MARGIN);
 
-                pageX = thisObject.pageXToTime(pageX);
-                dragStartX = thisObject.pageXToTime(pageX);
+                pageXTime = thisObject.pageXToTime(pageX);
+                dragStartXTime = thisObject.pageXToTime(dragStartX);
                 if (pageX > dragStartX) {
-                    dragRange = [dragStartX, pageX];
+                    dragRange = [dragStartXTime, pageXTime];
                 } else {
-                    dragRange = [pageX, dragStartX];
+                    dragRange = [pageXTime, dragStartXTime];
                 }
 
                 console.log("drag from " + dragRange[0] + " to " + dragRange[1]);
+                if (thisObject.selectionGraph !== null) {
+                    thisObject.selectionGraph.addSelection(
+                        dragRange[0].getTime(), dragRange[1].getTime()
+                    );
+                }
             })
     );
 
@@ -277,7 +410,7 @@ function LocationGraph(data, xScale = null, idSelector = "#locationGraph", width
     this.canvas = d3.select(idSelector)
         .append("svg")
         .attr("width", this.width)
-        .attr("height", this.height + TICK_WIDTH);
+        .attr("height", this.height);
 
     this.verticalLine = this.canvas.append("line")
         .attr("class", "vertical-line")
@@ -288,6 +421,14 @@ function LocationGraph(data, xScale = null, idSelector = "#locationGraph", width
         .style("stroke", "black")
         .style("stroke-width", 1)
         .style("stroke-dasharray", ("3, 3"));
+
+    for (var i = 0; i < data.length - 1; i++) {
+        if (data[i]["STATUS"] == "entering") {
+            console.log(data[i]);
+            data[i]["LOCATION"] = data[i + 1]["LOCATION"];
+            console.log(data[i + 1]);
+        }
+    }
 
     for (i = 0; i < data.length - 1; i++) {
         var row = data[i],
@@ -338,6 +479,116 @@ function LocationGraph(data, xScale = null, idSelector = "#locationGraph", width
     }
 }
 
+function Selection(selectionGraph, start, end) {
+    var thisObject = this;
+
+    var drawStart = selectionGraph.xScale(start) + PAGE_MARGIN,
+        drawEnd = selectionGraph.xScale(end) + PAGE_MARGIN,
+        drawWidth = drawEnd - drawStart,
+        midpoint = (start + end)/2;
+
+    var dialog = document.getElementById("dialog"),
+        dialogStart = document.getElementById("dialogStart"),
+        dialogEnd = document.getElementById("dialogEnd"),
+        dialogLocation = document.getElementById("dialogLocation"),
+        dialogStatus = document.getElementById("dialogStatus"),
+        dialogConfirm = document.getElementById("dialogConfirm"),
+        dialogDelete = document.getElementById("dialogDelete");
+
+    this.data = null;
+    this.selectionGraph = selectionGraph;
+    var box = null;
+
+    for (var i = 0; i < selectionGraph.data.length - 1; i++) {
+        var row = selectionGraph.data[i];
+        if (
+            (
+                (row["TIMESTAMP"] <= midpoint)
+                && (selectionGraph.data[i + 1]["TIMESTAMP"] > midpoint)
+            )
+            || (selectionGraph.data[i + 1]["TIMESTAMP"] > midpoint)
+        ) {
+            this.data = row;
+            delete this.data["TIMESTAMP"];
+            this.data["START"] = start;
+            this.data["END"] = end;
+            console.log(this.data);
+            break;
+        }
+    };
+
+    this.hideDialog = function() {
+        thisObject.data["LOCATION"] = dialogLocation.value;
+        thisObject.data["STATUS"] = dialogStatus.value;
+        dialog.setAttribute("hidden", "");
+        dialogConfirm.removeEventListener("click", thisObject.hideDialog);
+        dialogDelete.removeEventListener("click", thisObject.deleteEventListener);
+    }
+
+    this.deleteEventListener = function() {
+        var selections = thisObject.selectionGraph.selections;
+        for (var i = 0; i < selections.length; i++) {
+            if (selections[i] == thisObject) {
+                selections.splice(i, 1);
+            }
+        }
+        thisObject.box.remove();
+        thisObject.hideDialog();
+    }
+
+    this.toggle = function() {
+        var data = thisObject.data;
+        dialog.removeAttribute("hidden");
+        dialogStart.value = new Date(data["START"]).toString();
+        dialogEnd.value = new Date(data["END"]).toString();
+        dialogLocation.value = data["LOCATION"];
+        dialogStatus.value = data["STATUS"];
+        dialogConfirm.addEventListener("click", thisObject.hideDialog);
+        dialogDelete.addEventListener("click", thisObject.deleteEventListener);
+    }
+    this.toggle();
+
+    this.box = selectionGraph.canvas.append("rect")
+        .attr("class", "selection")
+        .attr("x", drawStart)
+        .attr("y", 0)
+        .attr("height", selectionGraph.height)
+        .attr("width", drawWidth)
+        .attr("fill", "orange")
+        .on("click", this.toggle);
+}
+
+function SelectionGraph(locationData, xScale, idSelector = "#selectionGraph", width = GRAPH_WIDTH, subgraphHeight = 20) {
+    var thisObject = this;
+    this.height = subgraphHeight;
+    this.data = locationData;
+    this.width = width;
+    this.xScale = xScale;
+    this.selections = [];
+
+    this.canvas = d3.select(idSelector)
+        .append("svg")
+        .attr("width", this.width)
+        .attr("height", this.height);
+
+    this.verticalLine = this.canvas.append("line")
+        .attr("class", "vertical-line")
+        .attr("x1", 0)
+        .attr("y1", 0)
+        .attr("x2", 0)
+        .attr("y1", this.height)
+        .style("stroke", "black")
+        .style("stroke-width", 1)
+        .style("stroke-dasharray", ("3, 3"));
+
+    this.addSelection = function(start, end) {
+        var selection = new Selection(thisObject, start, end);
+        this.selections.push(selection);
+        return selection;
+    }
+
+}
+
 var sampleDate = "2018-06-24";
 var globalXScale;
 
@@ -353,6 +604,7 @@ d3.csv("data/" + sampleDate + "/location").then(function(data) {
         .range([0, GRAPH_WIDTH]);
 
     locationGraph = new LocationGraph(data, globalXScale);
+    selectionGraph = new SelectionGraph(data, globalXScale);
 });
 
 d3.csv("data/" + sampleDate + "/adxl").then(function(data) {
@@ -385,8 +637,39 @@ d3.csv("data/" + sampleDate + "/adxl").then(function(data) {
 
     adxlGraph = new AdxlGraph(downsampledData, globalXScale,
         "#adxlGraph", GRAPH_WIDTH, 80,
-        [locationGraph.verticalLine]);
+        [locationGraph.verticalLine, selectionGraph.verticalLine],
+        selectionGraph
+    );
 
+});
+
+document.getElementById("export").addEventListener("click", function() {
+    var selections = selectionGraph.selections;
+    if (selections.length == 0) {
+        alert("No data to export")
+    } else {
+        var columns = Object.keys(selections[0].data),
+            lines = ["data:text/csv;charset=utf-8," + columns.join(",")];
+
+        for (var i = 0; i < selections.length; i++) {
+            lines.push(
+                columns.map(function(key) {
+                    return selectionGraph.selections[0].data[key];
+                }).join(",")
+            );
+        }
+
+        this.href = encodeURI(lines.join("\n"));
+        this.target = "_blank";
+        this.download = "labels.csv";
+    }
+});
+
+document.getElementById("clear").addEventListener("click", function() {
+    var selections = selectionGraph.selections;
+    for (var i = selections.length - 1; i > -1; i--) {
+        selections[i].deleteEventListener();
+    }
 });
 
         </script>
