@@ -6,7 +6,6 @@ import csv
 import flask
 import os
 import time
-import webbrowser
 
 from sanity_check import sanity_check
 
@@ -106,5 +105,6 @@ def new_observation():
         return flask.jsonify({"error": "blank form"})
 
 if (__name__ == "__main__"):
+    import webbrowser
     webbrowser.open_new_tab("http://localhost:%d" % PORT)
     app.run(port = PORT, debug = False)
