@@ -526,23 +526,25 @@ function Selection(selectionGraph, start, end, data = null, showDialog = true) {
     this.selectionGraph = selectionGraph;
     var box = null;
 
-    for (var i = 0; i < selectionGraph.data.length - 1; i++) {
-        var row = selectionGraph.data[i];
-        if (
-            (
-                (row["TIMESTAMP"] <= midpoint)
-                && (selectionGraph.data[i + 1]["TIMESTAMP"] > midpoint)
-            )
-            || (selectionGraph.data[i + 1]["TIMESTAMP"] > midpoint)
-        ) {
-            this.data = row;
-            delete this.data["TIMESTAMP"];
-            this.data["START"] = start;
-            this.data["END"] = end;
-            //console.log(this.data);
-            break;
+    if (data == null) {
+        for (var i = 0; i < selectionGraph.data.length - 1; i++) {
+            var row = selectionGraph.data[i];
+            if (
+                (
+                    (row["TIMESTAMP"] <= midpoint)
+                    && (selectionGraph.data[i + 1]["TIMESTAMP"] > midpoint)
+                )
+                || (selectionGraph.data[i + 1]["TIMESTAMP"] > midpoint)
+            ) {
+                this.data = row;
+                delete this.data["TIMESTAMP"];
+                this.data["START"] = start;
+                this.data["END"] = end;
+                //console.log(this.data);
+                break;
+            }
         }
-    };
+    }
 
     this.hideDialog = function() {
         thisObject.data["LOCATION"] = dialogLocation.value;
@@ -581,6 +583,7 @@ function Selection(selectionGraph, start, end, data = null, showDialog = true) {
         .attr("height", selectionGraph.height)
         .attr("width", drawWidth)
         .attr("fill", "orange")
+        .attr("stroke", "black")
         .on("click", this.toggle);
 
     if (showDialog) {
@@ -612,10 +615,48 @@ function SelectionGraph(locationData, xScale, idSelector = "#selectionGraph", wi
         .style("stroke-dasharray", ("3, 3"));
 
     this.addSelection = function(start, end) {
-        var selection = new Selection(thisObject, start, end);
-        this.selections.push(selection);
-        return selection;
+        if (start != end) {
+            var selection = new Selection(thisObject, start, end);
+            this.selections.push(selection);
+            return selection;
+        }
     }
+
+    this.pageXToTime = function(pageX) {
+        return this.xScale.invert(pageX - PAGE_MARGIN);
+    }
+
+    this.canvas.on("click", function() {
+        var pageX = d3.event.x + scrollLeft;
+        var pageXTimestamp = thisObject.pageXToTime(pageX).getTime();
+        var before = -Infinity;
+        var after = Infinity;
+
+        //console.log(pageX, thisObject.pageXToTime(pageX), pageXTimestamp);
+
+        for (var i = 0; i < thisObject.selections.length; i++) {
+            var selection = thisObject.selections[i],
+                start = selection.data["START"],
+                end = selection.data["END"];
+            if (
+                (end < pageXTimestamp)
+                && (end > before)
+            ) {
+                before = end;
+            }
+            if (
+                (start > pageXTimestamp)
+                && (start < after)
+            ) {
+                after = start;
+            }
+        }
+
+        if ((before != -Infinity) && (after != Infinity)) {
+            //console.log(before, after);
+            thisObject.addSelection(before, after);
+        }
+    });
 
 }
 
@@ -659,12 +700,6 @@ d3.csv("data/" + sampleDate + "/adxl").then(function(data) {
         }
     };
 
-    /*
-    adxlGraph = new AdxlGraph(downsampledData, globalXScale, {
-        otherVerticalLines: [locationGraph.verticalLine]
-    });
-    */
-
     adxlGraph = new AdxlGraph(downsampledData, globalXScale,
         "#adxlGraph", GRAPH_WIDTH, 80,
         [locationGraph.verticalLine, selectionGraph.verticalLine],
@@ -704,7 +739,12 @@ document.getElementById("clear").addEventListener("click", function() {
 
 function loadCsv(contents) {
     d3.csvParse(contents).forEach(function(row) {
-        var selection = new Selection(selectionGraph, row["START"], row["END"], row, false);
+        row["START"] = parseInt(row["START"]);
+        row["END"] = parseInt(row["END"]);
+        var selection = new Selection(
+            selectionGraph, row["START"], row["END"],
+            row, false
+        );
         selectionGraph.selections.push(selection);
     });
 }
