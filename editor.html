@@ -7,9 +7,15 @@ html, body {
     margin: 0;
     padding: 0;
 }
+
 .overlay {
     fill: none;
     pointer-events: all;
+}
+
+.selection-overlay {
+    fill: white;
+    cursor: pointer;
 }
 
 .vetical-line {
@@ -550,6 +556,8 @@ function Selection(selectionGraph, start, end, data = null, showDialog = true, l
         this.data["LOCATION"] = locationOverride;
     }
 
+    console.log(this.data["LOCATION"])
+
     this.hideDialog = function() {
         thisObject.data["LOCATION"] = dialogLocation.value;
         thisObject.data["STATUS"] = dialogStatus.value;
@@ -630,46 +638,55 @@ function SelectionGraph(locationData, xScale, idSelector = "#selectionGraph", wi
         return this.xScale.invert(pageX - PAGE_MARGIN);
     }
 
-    this.canvas.on("click", function() {
-        var pageX = d3.event.x + scrollLeft,
-            pageXTimestamp = thisObject.pageXToTime(pageX).getTime(),
-            before = -Infinity,
-            after = Infinity,
-            beforeLocation = null,
-            afterLocation = null
+    this.canvas
+        .append("rect")
+        .attr("class", "selection-overlay")
+        .attr("width", width)
+        .attr("height", subgraphHeight)
+        .on("click", function() {
+            var pageX = d3.event.x + scrollLeft,
+                pageXTimestamp = thisObject.pageXToTime(pageX).getTime(),
+                before = -Infinity,
+                after = Infinity,
+                beforeLocation = null,
+                afterLocation = null
 
-        //console.log(pageX, thisObject.pageXToTime(pageX), pageXTimestamp);
+            //console.log(pageX, thisObject.pageXToTime(pageX), pageXTimestamp);
 
-        for (var i = 0; i < thisObject.selections.length; i++) {
-            var selection = thisObject.selections[i],
-                start = selection.data["START"],
-                end = selection.data["END"];
-            if (
-                (end < pageXTimestamp)
-                && (end > before)
-            ) {
-                before = end;
-                beforeLocation = selection.data["LOCATION"];
+            for (var i = 0; i < thisObject.selections.length; i++) {
+                var selection = thisObject.selections[i],
+                    start = selection.data["START"],
+                    end = selection.data["END"];
+                if (
+                    (end < pageXTimestamp)
+                    && (end > before)
+                ) {
+                    before = end;
+                    beforeLocation = selection.data["LOCATION"];
+                }
+                if (
+                    (start > pageXTimestamp)
+                    && (start < after)
+                ) {
+                    after = start;
+                    afterLocation = selection.data["LOCATION"];
+                }
             }
-            if (
-                (start > pageXTimestamp)
-                && (start < after)
-            ) {
-                after = start;
-                afterLocation = selection.data["LOCATION"];
-            }
-        }
 
-        if ((before != -Infinity) && (after != Infinity)) {
-            //console.log(before, after);
-            var selection = new Selection(
-                thisObject, before, after,
-                null, false, beforeLocation + " to " + afterLocation
-            );
-            selection.toggle();
-            thisObject.selections.push(selection);
-        }
-    });
+            if (
+                (before != -Infinity) && (after != Infinity)
+                && !(beforeLocation.includes(" to "))
+                && !(afterLocation.includes(" to "))
+            ) {
+                //console.log(before, after);
+                var selection = new Selection(
+                    thisObject, before, after,
+                    null, false, beforeLocation + " to " + afterLocation
+                );
+                thisObject.selections.push(selection);
+                selection.toggle();
+            }
+        });
 
 }
 
@@ -754,11 +771,10 @@ function loadCsv(contents) {
     d3.csvParse(contents).forEach(function(row) {
         row["START"] = parseInt(row["START"]);
         row["END"] = parseInt(row["END"]);
-        var selection = new Selection(
+        selectionGraph.selections.push(new Selection(
             selectionGraph, row["START"], row["END"],
             row, false
-        );
-        selectionGraph.selections.push(selection);
+        ));
     });
 }
 
@@ -774,6 +790,12 @@ document.getElementById("upload").addEventListener("change", function() {
         reader.readAsText(file);
     }
 })
+
+document.addEventListener("keypress", function(e) {
+    if ((e.keyCode == 13) && !(document.getElementById("dialog").hidden)) {
+        document.getElementById("dialogConfirm").click();
+    }
+});
 
         </script>
     </body>
