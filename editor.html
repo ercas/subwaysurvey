@@ -506,7 +506,7 @@ function LocationGraph(data, xScale = null, idSelector = "#locationGraph", width
     }
 }
 
-function Selection(selectionGraph, start, end, data = null, showDialog = true) {
+function Selection(selectionGraph, start, end, data = null, showDialog = true, locationOverride = null) {
     var thisObject = this;
 
     var drawStart = selectionGraph.xScale(start) + PAGE_MARGIN,
@@ -544,6 +544,10 @@ function Selection(selectionGraph, start, end, data = null, showDialog = true) {
                 break;
             }
         }
+    }
+
+    if (locationOverride != null) {
+        this.data["LOCATION"] = locationOverride;
     }
 
     this.hideDialog = function() {
@@ -627,10 +631,12 @@ function SelectionGraph(locationData, xScale, idSelector = "#selectionGraph", wi
     }
 
     this.canvas.on("click", function() {
-        var pageX = d3.event.x + scrollLeft;
-        var pageXTimestamp = thisObject.pageXToTime(pageX).getTime();
-        var before = -Infinity;
-        var after = Infinity;
+        var pageX = d3.event.x + scrollLeft,
+            pageXTimestamp = thisObject.pageXToTime(pageX).getTime(),
+            before = -Infinity,
+            after = Infinity,
+            beforeLocation = null,
+            afterLocation = null
 
         //console.log(pageX, thisObject.pageXToTime(pageX), pageXTimestamp);
 
@@ -643,18 +649,25 @@ function SelectionGraph(locationData, xScale, idSelector = "#selectionGraph", wi
                 && (end > before)
             ) {
                 before = end;
+                beforeLocation = selection.data["LOCATION"];
             }
             if (
                 (start > pageXTimestamp)
                 && (start < after)
             ) {
                 after = start;
+                afterLocation = selection.data["LOCATION"];
             }
         }
 
         if ((before != -Infinity) && (after != Infinity)) {
             //console.log(before, after);
-            thisObject.addSelection(before, after);
+            var selection = new Selection(
+                thisObject, before, after,
+                null, false, beforeLocation + " to " + afterLocation
+            );
+            selection.toggle();
+            thisObject.selections.push(selection);
         }
     });
 
