@@ -61,6 +61,7 @@ button, .selection {
 #adxlGraphContainer {
     overflow-x: scroll;
     width: 100%;
+    cursor: crosshair;
 }
 #locationGraphContainer {
     overflow-y: scroll;
@@ -107,20 +108,26 @@ button, .selection {
         </div>
 
         <div style="padding: 20px;">
-            <div style="width: 75%; float: left;">
+            <div style="float: left;">
                 <img src=static/neu.png></img>
                 <br>
                 <br><span id=caption>Environmental Sensors Lab - Subway Survey Data Labeler</span>
+            </div>
+            <div style="padding: 0px 50px; float: left;">
+                Key
+                <br>
+                <br>
+                <div style="background: green" class=key-item>Leaving</div>
+                <div style="background: red" class=key-item>Entering</div>
+                <div style="background: blue" class=key-item>Left</div>
             </div>
             <div style="float: left;">
                 <a id=export href=#>export</a>
                 <a id=clear href=#>clear</a>
                 <br>
                 <br>
-                Key
-                <div style="background: green" class=key-item>Leaving</div>
-                <div style="background: red" class=key-item>Entering</div>
-                <div style="background: blue" class=key-item>Left</div>
+                upload: 
+                <input id=upload type=file>
             </div>
         </div>
         <script>
@@ -133,7 +140,7 @@ var SPACE_BETWEEN_GRAPHS = 20,
     //PAGE_MARGIN = 10,
     PAGE_MARGIN = 0,
     ADXL_ZOOM_WINDOW = 1.5,
-    GRAPH_WIDTH = 20000,
+    GRAPH_WIDTH = 30000,
     TIME_BUFFER = 100000,
     AXES = {
         "X": "red",
@@ -284,6 +291,13 @@ function AdxlGraph(data, xScale = null, idSelector = "#adxlGraph", width = GRAPH
         .attr("width", this.width)
         .attr("height", this.height + TICK_WIDTH);
 
+    this.canvas.append("g")
+        .attr("transform", "translate(" + TICK_WIDTH + "," + this.height + ")")
+        .call(
+            d3.axisBottom(this.xScale)
+                .ticks(N_TIME_TICKS)
+        );
+
     this.bounds = this.canvas.node().getBoundingClientRect();
 
     var nGraph = 0
@@ -309,18 +323,26 @@ function AdxlGraph(data, xScale = null, idSelector = "#adxlGraph", width = GRAPH
     for (var i = 0; i < otherVerticalLines.length; i++) {
         this.verticalLines.push(otherVerticalLines[i]);
     }
-    var verticalLines = this.verticalLines;
 
-    this.canvas.append("g")
-        .attr("transform", "translate(" + TICK_WIDTH + "," + this.height + ")")
-        .call(
-            d3.axisBottom(this.xScale)
-                .ticks(N_TIME_TICKS)
-        );
+    this.horizontalLine = this.canvas.append("line")
+        .attr("class", "vertical-line")
+        .attr("x1", 0)
+        .attr("y1", this.height / 2)
+        .attr("x2", this.width)
+        .attr("y1", this.height / 2)
+        .style("stroke", "black")
+        .style("stroke-width", 1)
+        .style("stroke-dasharray", ("3, 3"))
+
+    this.moveHorizontalLine = function(pageY) {
+        thisObject.horizontalLine
+            .attr("y1", pageY - PAGE_MARGIN + 1.5)
+            .attr("y2", pageY - PAGE_MARGIN + 1.5);
+    }
 
     this.moveVerticalLines = function(pageX) {
-        for (var i = 0; i < verticalLines.length; i++) {
-            verticalLines[i]
+        for (var i = 0; i < thisObject.verticalLines.length; i++) {
+            thisObject.verticalLines[i]
                 .attr("x1", pageX - PAGE_MARGIN + 1.5)
                 .attr("x2", pageX - PAGE_MARGIN + 1.5);
         }
@@ -332,6 +354,7 @@ function AdxlGraph(data, xScale = null, idSelector = "#adxlGraph", width = GRAPH
 
     this.canvas.on("mousemove", function() {
         thisObject.moveVerticalLines(d3.event.x + scrollLeft);
+        thisObject.moveHorizontalLine(d3.event.y + document.body.scrollTop);
     });
 
     var dragSelection = this.canvas.append("rect")
@@ -343,7 +366,8 @@ function AdxlGraph(data, xScale = null, idSelector = "#adxlGraph", width = GRAPH
         .style("fill", "black")
         .style("opacity", 0);
 
-    var deagStartX = 0;
+    var dragStartX = 0;
+    var dragStartY = 0;
 
     this.canvas.call(
         d3.drag()
@@ -354,6 +378,9 @@ function AdxlGraph(data, xScale = null, idSelector = "#adxlGraph", width = GRAPH
                     .attr("x", pageX)
                     .attr("width", 0)
                     .style("opacity", 0.25);
+
+                dragStartY = d3.event.y;
+                //#console.log(dragStartY);
             })
             .on("drag", function() {
                 var pageX = d3.event.x;
@@ -380,7 +407,7 @@ function AdxlGraph(data, xScale = null, idSelector = "#adxlGraph", width = GRAPH
                     dragRange = [pageXTime, dragStartXTime];
                 }
 
-                console.log("drag from " + dragRange[0] + " to " + dragRange[1]);
+                //console.log("drag from " + dragRange[0] + " to " + dragRange[1]);
                 if (thisObject.selectionGraph !== null) {
                     thisObject.selectionGraph.addSelection(
                         dragRange[0].getTime(), dragRange[1].getTime()
@@ -424,9 +451,9 @@ function LocationGraph(data, xScale = null, idSelector = "#locationGraph", width
 
     for (var i = 0; i < data.length - 1; i++) {
         if (data[i]["STATUS"] == "entering") {
-            console.log(data[i]);
+            //console.log(data[i]);
             data[i]["LOCATION"] = data[i + 1]["LOCATION"];
-            console.log(data[i + 1]);
+            //console.log(data[i + 1]);
         }
     }
 
@@ -479,7 +506,7 @@ function LocationGraph(data, xScale = null, idSelector = "#locationGraph", width
     }
 }
 
-function Selection(selectionGraph, start, end) {
+function Selection(selectionGraph, start, end, data = null, showDialog = true) {
     var thisObject = this;
 
     var drawStart = selectionGraph.xScale(start) + PAGE_MARGIN,
@@ -495,7 +522,7 @@ function Selection(selectionGraph, start, end) {
         dialogConfirm = document.getElementById("dialogConfirm"),
         dialogDelete = document.getElementById("dialogDelete");
 
-    this.data = null;
+    this.data = data;
     this.selectionGraph = selectionGraph;
     var box = null;
 
@@ -512,7 +539,7 @@ function Selection(selectionGraph, start, end) {
             delete this.data["TIMESTAMP"];
             this.data["START"] = start;
             this.data["END"] = end;
-            console.log(this.data);
+            //console.log(this.data);
             break;
         }
     };
@@ -546,7 +573,6 @@ function Selection(selectionGraph, start, end) {
         dialogConfirm.addEventListener("click", thisObject.hideDialog);
         dialogDelete.addEventListener("click", thisObject.deleteEventListener);
     }
-    this.toggle();
 
     this.box = selectionGraph.canvas.append("rect")
         .attr("class", "selection")
@@ -556,6 +582,10 @@ function Selection(selectionGraph, start, end) {
         .attr("width", drawWidth)
         .attr("fill", "orange")
         .on("click", this.toggle);
+
+    if (showDialog) {
+        this.toggle();
+    }
 }
 
 function SelectionGraph(locationData, xScale, idSelector = "#selectionGraph", width = GRAPH_WIDTH, subgraphHeight = 20) {
@@ -589,7 +619,7 @@ function SelectionGraph(locationData, xScale, idSelector = "#selectionGraph", wi
 
 }
 
-var sampleDate = "2018-06-24";
+var sampleDate = "2018-06-19";
 var globalXScale;
 
 d3.csv("data/" + sampleDate + "/location").then(function(data) {
@@ -654,7 +684,7 @@ document.getElementById("export").addEventListener("click", function() {
         for (var i = 0; i < selections.length; i++) {
             lines.push(
                 columns.map(function(key) {
-                    return selectionGraph.selections[0].data[key];
+                    return selectionGraph.selections[i].data[key];
                 }).join(",")
             );
         }
@@ -671,6 +701,26 @@ document.getElementById("clear").addEventListener("click", function() {
         selections[i].deleteEventListener();
     }
 });
+
+function loadCsv(contents) {
+    d3.csvParse(contents).forEach(function(row) {
+        var selection = new Selection(selectionGraph, row["START"], row["END"], row, false);
+        selectionGraph.selections.push(selection);
+    });
+}
+
+document.getElementById("upload").addEventListener("change", function() {
+    var reader = new FileReader();
+    var file = document.querySelector("input[type=file]").files[0];
+
+    reader.addEventListener("load", function() {
+        loadCsv(reader.result);
+    });
+
+    if (file) {
+        reader.readAsText(file);
+    }
+})
 
         </script>
     </body>
